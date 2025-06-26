@@ -1,8 +1,10 @@
-import React,{useState} from 'react'
+import React,{useState,useEffect} from 'react'
 import {Button} from '@mui/material'
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import toast from 'react-hot-toast'
 import {useAuth} from './AuthContext'
+import axios from "axios";
+import closetimg from "../assets/closetimg.png"
 import {store,db} from '../utils/firebase'
 //import { collection, addDoc } from "firebase/firestore";
 import {ref,uploadBytes, getDownloadURL} from 'firebase/storage'
@@ -12,7 +14,66 @@ function Home(){
     const [file, setFile] = useState(null);
     const {user} = useAuth();
     const storage = store;
+    const [prompt, setPrompt] = useState("");
+    const [idea, setIdea] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     const[category,setCategory]= useState('top');
+    const [coords, setCoords] = useState(null);
+    const BETA_NOTICE_MESSAGE = "⚠️ Beta Notice: This page is currently in beta and still under construction. Some features may be incomplete or not work as expected. We're actively improving it thank you for your patience!";
+    const info = () => {
+      if (!sessionStorage.getItem("betaNoticeShown")) {
+        alert(BETA_NOTICE_MESSAGE);
+        sessionStorage.setItem("betaNoticeShown", "true");
+      }
+    }
+    useEffect(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setCoords({
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+            });
+          },
+          (error) => {
+            console.error("Geolocation error:", error);
+            toast.error("Location access denied. Defaulting to London.");
+          }
+        );
+      } else {
+        toast.error("Geolocation not supported.");
+      }
+    }, []);
+    useEffect(() => {
+      info();
+    }, []);
+    const handleGenerate = async () => {
+      if (!prompt.trim()) return;
+  
+      setLoading(true);
+      setError("");
+      setIdea("");
+
+      try {
+        if(!user||!user.uid){
+          setError("Please log in to use this feature.");
+          return;
+        }
+        const res = await axios.post("http://127.0.0.1:5000/generate-outfit-from-closet", {
+          userId:user && user.uid ? user.uid : null,  // dynamically pull this from auth or localStorage
+          lat: coords?.lat ?? null,
+          lon: coords?.lon ?? null,
+          prompt,
+        });
+        setIdea(res.data.outfit_idea);
+      } catch (err) {
+        console.error("Error:", err);
+        setError("Something went wrong. Try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) setFile(selectedFile);
@@ -31,7 +92,8 @@ function Home(){
           return;
         }
       
-        try {
+        try {  // Replace with dynamic city if you want
+
           const safeFileName = file.name.replace(/\s+/g, "_");
           const userImageRef = ref(storage, `users/${user.uid}/${category}/${safeFileName}`);
       
@@ -39,7 +101,7 @@ function Home(){
           const downloadUrl = await getDownloadURL(userImageRef);
           console.log("Original uploaded:", downloadUrl);
       
-          const data = await cartoonImage(file, user.uid, downloadUrl, category);
+          const data = await cartoonImage(file, user.uid, downloadUrl, category, coords?.lat, coords?.lon);
       
           if (data.cartoonUrl) {
             toast.success("Outfit uploaded & stylized successfully!");
@@ -79,6 +141,13 @@ function Home(){
                     Upload Outfit
                     </Button>
                     </label>
+                    {file && (
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt="Preview"
+                        className="w-full h-auto mt-2 rounded"
+                      />
+                    )}
                     <select onChange={(e)=>setCategory(e.target.value)} className="text-white">
                         <option value='' disabled selected>select an option</option>
                         <optgroup label="👕 Tops">
@@ -88,6 +157,7 @@ function Home(){
                         </optgroup>
                         <optgroup label='👖 Bottom'>
                         <option value='trouser'>Trouser</option>
+                        <option value='short'>Short</option>
                         </optgroup>
                         <optgroup label="🧢 Accessories">
                         <option value='cap'>Cap</option>
@@ -101,22 +171,34 @@ function Home(){
                 </section>
                 <section className="max-w-sm top-20 ml-6 bg-white text-black rounded-md p-2 -translate-x-8 ">
                     <Link to='/closet'>
-                        <img src="https://i.pinimg.com/736x/f6/60/ba/f660ba31eaf6c12fb8975dbe19d40dca.jpg"></img>
+                        <img src={closetimg}></img>
                         <h1 className="font-bold text-[30px] text-center">Closet</h1>
                     </Link>
                 </section> 
                 <section className="max-w-sm top-20 ml-6 bg-white text-black rounded-md p-2 -translate-x-8 ">
                     <Link to='/'>
-                        <input
-                         type="text"
-                         placeholder="type in a prompt"
-                         className="rounded-md text-center text-white"
-                         ></input>
-                         <Button
-                         onClick={closett}
-                            >
-                                generate
-                            </Button>
+                      <textarea
+                        className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring focus:ring-black"
+                        placeholder="What should I wear to a beach party?"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        rows={4}
+                      />
+                      <button
+                        onClick={handleGenerate}
+                        className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
+                        disabled={loading}
+                      >
+                        {loading ? "Generating..." : "Get Outfit Idea"}
+                      </button>
+                      {idea && (
+                        <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
+                          <h2 className="font-semibold mb-2">Idea:</h2>
+                          <p>{idea}</p>
+                        </div>
+                      )}
+
+                      {error && <p className="text-red-500 mt-4">{error}</p>}
                         <h1 className="font-bold text-[30px] text-center">Ai Generated Fashion Idea</h1>
                     </Link>
                 </section> 

@@ -22,5 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 build/
+*.json
+outfitgenerator-d60a5-67f7d22b29c4.json
 .env
 *.sw?
+node_modules/
+.env
+node_modules/
+.env
+venv/
+__pycache__/
+*.pyc

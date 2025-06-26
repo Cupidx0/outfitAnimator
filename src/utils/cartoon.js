@@ -1,4 +1,4 @@
-export const cartoonImage = async (file, userId, originalUrl, category)=> {
+export const cartoonImage = async (file, userId, originalUrl,category,lat, lon,dominantColors)=> {
     if (!file||!userId) {
         throw new Error("No file provided for cartoonization.");
     }
@@ -7,10 +7,13 @@ export const cartoonImage = async (file, userId, originalUrl, category)=> {
     formData.append("userId", userId);
     formData.append("originalUrl", originalUrl);
     formData.append("category", category);
+    if (lat && lon) {
+        formData.append("lat", lat);
+        formData.append("lon", lon);
+      }    
+    formData.append("dominantColors",dominantColors);
     try {
-        // 3. Send the POST request using fetch
-        // The browser will automatically set the Content-Type to multipart/form-data
-        // when you send a FormData object.
+        
         const response = await fetch('http://127.0.0.1:5000/cartoonize', {
             method: 'POST',
             body: formData,
