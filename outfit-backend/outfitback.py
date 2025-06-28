@@ -28,7 +28,7 @@ if not os.path.exists(service_account_key_path):
     print(f"Error: Service account key file not found at {service_account_key_path}")
     # Handle error or exit
 else:
-    cred = credentials.Certificate(json.loads(service_account_key_path))
+    cred = credentials.Certificate(service_account_key_path)
     bucket_name = 'outfitgenerator-d60a5.firebasestorage.app' # <-- Make sure this is .com here!
 
     # *** Add this line to print the value being used ***
