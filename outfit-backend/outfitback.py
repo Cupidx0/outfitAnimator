@@ -23,12 +23,12 @@ load_dotenv()
 api_key = os.getenv("OPENWEATHER_API_KEY")
 city = "London"
 openai.api_key = os.getenv("OPENAI_API_KEY")
-service_account_key_path =  "outfitgenerator-d60a5-67f7d22b29c4.json"
+service_account_key_path =  os.getenv("FIREBASE_SERVICE_ACCOUNT")
 if not os.path.exists(service_account_key_path):
     print(f"Error: Service account key file not found at {service_account_key_path}")
     # Handle error or exit
 else:
-    cred = credentials.Certificate(service_account_key_path)
+    cred = credentials.Certificate(json.loads(service_account_key_path))
     bucket_name = 'outfitgenerator-d60a5.firebasestorage.app' # <-- Make sure this is .com here!
 
     # *** Add this line to print the value being used ***
