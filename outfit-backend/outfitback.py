@@ -45,6 +45,7 @@ outfitback = Flask(__name__)
 CORS(outfitback)
 #replicate Ai
 os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_KEY")
+rep_client = replicate.Client(api_token=os.getenv("REPLICATE_API_TOKEN"))
 #model = replicate.models.get("catacolabs/cartoonify")
 #version = model.versions.get("f109015d60170dfb20460f17da8cb863155823c85ece1115e1e9e4ec7ef51d3b")
 #prompt = "A cartoon-style version of the uploaded clothing item."
