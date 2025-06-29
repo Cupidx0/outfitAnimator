@@ -23,22 +23,25 @@ load_dotenv()
 api_key = os.getenv("OPENWEATHER_API_KEY")
 city = "London"
 openai.api_key = os.getenv("OPENAI_API_KEY")
-service_account_key_path =  os.getenv("FIREBASE_SERVICE_ACCOUNT")
-if not os.path.exists(service_account_key_path):
+service_account_key_path = "/etc/secrets/outfitstyle.json"
+if not service_account_key_path:
     print(f"Error: Service account key file not found at {service_account_key_path}")
     # Handle error or exit
 else:
-    cred = credentials.Certificate(service_account_key_path)
-    bucket_name = 'outfitgenerator-d60a5.firebasestorage.app' # <-- Make sure this is .com here!
+    try:
+        cred = credentials.Certificate(service_account_key_path)
+        bucket_name = 'outfitgenerator-d60a5.firebasestorage.app' # <-- Make sure this is .com here!
 
-    # *** Add this line to print the value being used ***
-    print(f"Initializing Firebase Admin with storageBucket: {bucket_name}")
-    # *****************************************************
+        # *** Add this line to print the value being used ***
+        print(f"Initializing Firebase Admin with storageBucket: {bucket_name}")
+        # *****************************************************
 
-    firebase_admin.initialize_app(cred, {
-        'storageBucket': bucket_name # Use the variable
-    })
-    print("Firebase Admin SDK initialized successfully!")
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': bucket_name # Use the variable
+        })
+        print("Firebase Admin SDK initialized successfully!")
+    except Exception as e:
+        print(f"Error initializing Firebase Admin: {e}")
 db = firestore.client()
 print("Firestore client obtained!")
 outfitback = Flask(__name__)
