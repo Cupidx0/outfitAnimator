@@ -60,7 +60,7 @@ function Home(){
           setError("Please log in to use this feature.");
           return;
         }
-        const res = await axios.post("http://127.0.0.1:5000/generate-outfit-from-closet", {
+        const res = await axios.post("https://outfit-animator.vercel.app/generate-outfit-from-closet", {
           userId:user && user.uid ? user.uid : null,  // dynamically pull this from auth or localStorage
           lat: coords?.lat ?? null,
           lon: coords?.lon ?? null,

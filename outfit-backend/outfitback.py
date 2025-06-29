@@ -368,6 +368,7 @@ def extract_dominant_colors(filepath, k=3, show_visual=False):
 
 @outfitback.route('/cartoonize',methods=['post'])
 def cartoonize():
+    os.makedirs("/tmp", exist_ok=True)
     # Add prints *before* the try block
     print("--- Request received ---")
     print(f"Method: {request.method}")
@@ -385,7 +386,7 @@ def cartoonize():
         # print("Received request to /cartoonize") # This might not be needed anymore with the others
 
         filename = secure_filename(file.filename)
-        filepath = f"temp/{filename}"
+        filepath = f"tmp/{filename}"
         print(f"Saving file to {filepath}")
         file.save(filepath)
         print(f"File saved: {filepath}")
@@ -422,7 +423,7 @@ def cartoonize():
              # return jsonify({"error": f"Failed to download cartoon image from Replicate. Status code: {r.status_code}"}), 500
 
 
-        temp_cartoon_path = "temp/cartoon.jpg"
+        temp_cartoon_path = "tmp/cartoon.jpg"
         with open(temp_cartoon_path, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
@@ -502,7 +503,7 @@ def cartoonize():
 
 if __name__ == '__main__':
     # Ensure the temp directory exists
-    if not os.path.exists('temp'):
-        os.makedirs('temp')
+    if not os.path.exists('tmp'):
+        os.makedirs('tmp')
     outfitback.run(debug=True)
-    #CORS(app, origins=["https://yourfrontenddomain.com"])
+    CORS(outfitback, origins=["https://outfit-animator.vercel.app"])

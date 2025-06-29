@@ -14,7 +14,7 @@ export const cartoonImage = async (file, userId, originalUrl,category,lat, lon,d
     formData.append("dominantColors",dominantColors);
     try {
         
-        const response = await fetch('http://127.0.0.1:5000/cartoonize', {
+        const response = await fetch('https://outfit-animator.vercel.app/cartoonize', {
             method: 'POST',
             body: formData,
         });
