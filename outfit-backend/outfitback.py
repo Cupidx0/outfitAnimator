@@ -22,8 +22,8 @@ import json
 load_dotenv()
 api_key = os.getenv("OPENWEATHER_API_KEY")
 city = "London"
-#openai.api_key = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.api_key
 service_account_key_path = "/etc/secrets/outfitstyle.json"
 if not service_account_key_path:
     print(f"Error: Service account key file not found at {service_account_key_path}")
