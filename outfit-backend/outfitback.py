@@ -22,8 +22,7 @@ import json
 load_dotenv()
 api_key = os.getenv("OPENWEATHER_API_KEY")
 city = "London"
-#openai.api_key = os.getenv("OPENAI_API_KEY")
-client = openai(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
 service_account_key_path = "/etc/secrets/outfitstyle.json"
 if not service_account_key_path:
     print(f"Error: Service account key file not found at {service_account_key_path}")
@@ -249,7 +248,7 @@ def generate_outfit_from_closet():
             "Suggest an outfit:"
         )
 
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
