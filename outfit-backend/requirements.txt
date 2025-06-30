@@ -27,6 +27,7 @@ replicate==0.24.0
 flask-cors
 python-dotenv
 opencv-python
+setuptools
 numpy==1.23.5
 scikit-learn
 webcolors
