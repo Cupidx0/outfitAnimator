@@ -47,7 +47,10 @@ else:
 db = firestore.client()
 print("Firestore client obtained!")
 outfitback = Flask(__name__)
-CORS(outfitback)
+CORS(outfitback, origins=[
+    "http://localhost:3000",
+    "https://outfit-animator-86cv3m6rd-cupidx0s-projects.vercel.app"
+])
 #replicate Ai
 os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_KEY")
 rep_client = replicate.Client(api_token=os.getenv("REPLICATE_API_TOKEN"))
@@ -508,4 +511,3 @@ if __name__ == '__main__':
     if not os.path.exists('tmp'):
         os.makedirs('tmp')
     outfitback.run(debug=True)
-3.
