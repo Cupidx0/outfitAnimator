@@ -1,3 +1,4 @@
+# Requires Python 3.11.9
 beautifulsoup4==4.13.4
 blinker==1.9.0
 certifi==2025.4.26
@@ -27,7 +28,7 @@ replicate==0.24.0
 flask-cors
 python-dotenv
 opencv-python
-setuptools
+setuptools>=80.0.0
 numpy==1.23.5
 scikit-learn
 webcolors
