@@ -29,7 +29,7 @@ flask-cors
 python-dotenv
 opencv-python
 setuptools>=80.0.0
-numpy==1.23.5
+numpy==1.23.0
 scikit-learn
 webcolors
 colormath
