@@ -27,7 +27,7 @@ replicate==0.24.0
 flask-cors
 python-dotenv
 opencv-python
-numpy
+numpy==1.23.5
 scikit-learn
 webcolors
 colormath
