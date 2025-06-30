@@ -13,6 +13,8 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 import webcolors
+from colour.utilities import as_float_array
+from colour.models import Lab_to_XYZ, XYZ_to_Lab
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
