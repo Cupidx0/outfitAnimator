@@ -506,4 +506,4 @@ if __name__ == '__main__':
     if not os.path.exists('tmp'):
         os.makedirs('tmp')
     outfitback.run(debug=True)
-    CORS(outfitback, origins=["https://outfit-animator.vercel.app", "https://outfit-animator-aclevjfe2-cupidx0s-projects.vercel.app"])
+    CORS(outfitback, origins=["https://outfit-animator.vercel.app", "https://outfit-animator-86cv3m6rd-cupidx0s-projects.vercel.app/home"])
