@@ -94,6 +94,7 @@ function Home(){
           return;
         }
         setLoadingUpload(true);
+        await new Promise((r) => setTimeout(r, 50)); // tiny delay to let UI update
         try {  // Replace with dynamic city if you want
 
           const safeFileName = file.name.replace(/\s+/g, "_");
@@ -170,7 +171,7 @@ function Home(){
                     </select>
                     <Button
                       onClick={handleUploadAndCartoon}
-                      disabled={loadingUpload}
+                      //disabled={loadingUpload}
                       startIcon={loadingUpload ? <CircularProgress size={20} color="inherit" /> : null}
                     >
                       {loadingUpload ? "Uploading" : "Submit"}
