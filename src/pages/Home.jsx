@@ -1,5 +1,5 @@
 import React,{useState,useEffect} from 'react'
-import {Button} from '@mui/material'
+import {Button, CircularProgress} from '@mui/material'
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import toast from 'react-hot-toast'
 import {useAuth} from './AuthContext'
@@ -193,6 +193,7 @@ function Home(){
                         onClick={handleGenerate}
                         className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
                         disabled={loading}
+                        startIcon={loading ? <CircularProgress size={20} /> : <UploadFileIcon sx={{ fontSize: 24 }} />}
                       >
                         {loading ? "Generating..." : "Get Outfit Idea"}
                       </button>
