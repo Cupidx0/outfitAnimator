@@ -323,7 +323,7 @@ def extract_dominant_colors(filepath, k=3, show_visual=False):
     # Helper: RGB to LAB
     def rgb_to_lab(rgb):
         rgb = np.array(rgb) / 255.0
-        xyz = RGB_to_XYZ(rgb)
+        xyz = RGB_to_XYZ(rgb, 'sRGB')  # or 'ACEScg', 'Adobe RGB (1998)', etc.
         lab = XYZ_to_Lab(xyz)
         return lab
 
