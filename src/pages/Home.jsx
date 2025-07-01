@@ -168,8 +168,9 @@ function Home(){
                         </optgroup>
                     </select>
                     <Button
-                    onClick={handleUploadAndCartoon}
-                    disabled={loading}
+                      onClick={handleUploadAndCartoon}
+                      disabled={loading}
+                      startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
                     >
                       {loading ? "Uploading" : "Submit"}
                     </Button>
@@ -189,14 +190,14 @@ function Home(){
                         onChange={(e) => setPrompt(e.target.value)}
                         rows={4}
                       />
-                      <button
+                      <Button
                         onClick={handleGenerate}
                         className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
                         disabled={loading}
-                        startIcon={loading ? <CircularProgress size={20} /> : <UploadFileIcon sx={{ fontSize: 24 }} />}
+                        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
                       >
                         {loading ? "Generating..." : "Get Outfit Idea"}
-                      </button>
+                      </Button>
                       {idea && (
                         <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
                           <h2 className="font-semibold mb-2">Idea:</h2>
