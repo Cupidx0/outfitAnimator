@@ -9,6 +9,7 @@ import {store,db} from '../utils/firebase'
 //import { collection, addDoc } from "firebase/firestore";
 import {ref,uploadBytes, getDownloadURL} from 'firebase/storage'
 import { Link } from 'react-router-dom';
+import { flushSync } from 'react-dom';
 import {cartoonImage} from '../utils/cartoon';
 function Home(){
     const [file, setFile] = useState(null);
@@ -93,8 +94,9 @@ function Home(){
           toast.error("You must be logged in to upload outfits.");
           return;
         }
-        setLoadingUpload(true);
-        await new Promise((r) => setTimeout(r, 50)); // tiny delay to let UI update
+        flushSync(()=>{
+          setLoadingUpload(true);
+        });
         try {  // Replace with dynamic city if you want
 
           const safeFileName = file.name.replace(/\s+/g, "_");
@@ -171,7 +173,7 @@ function Home(){
                     </select>
                     <Button
                       onClick={handleUploadAndCartoon}
-                      //disabled={loadingUpload}
+                      disabled={loadingUpload}
                       startIcon={loadingUpload ? <CircularProgress size={20} color="inherit" /> : null}
                     >
                       {loadingUpload ? "Uploading" : "Submit"}
