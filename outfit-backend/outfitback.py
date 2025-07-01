@@ -47,10 +47,7 @@ else:
 db = firestore.client()
 print("Firestore client obtained!")
 outfitback = Flask(__name__)
-CORS(outfitback, origins=[
-    "http://localhost:3000",
-    "https://outfit-animator-86cv3m6rd-cupidx0s-projects.vercel.app"
-])
+CORS(outfitback, resources={r"/*": {"origins": "https://outfit-animator-86cv3m6rd-cupidx0s-projects.vercel.app"}}, supports_credentials=True)
 #replicate Ai
 os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_KEY")
 rep_client = replicate.Client(api_token=os.getenv("REPLICATE_API_TOKEN"))
@@ -60,6 +57,12 @@ rep_client = replicate.Client(api_token=os.getenv("REPLICATE_API_TOKEN"))
 @outfitback.route('/')
 def hello():
     return 'Backend is running now'
+@outfitback.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    return response
+
 def get_weather(city, api_key):
     url = f"https://api.openweathermap.org/data/2.5/forecast?units=metric&q={city}&appid={api_key}"
     response = requests.get(url)
@@ -325,7 +328,12 @@ def extract_dominant_colors(filepath, k=3, show_visual=False):
     }
     def safe_delta_e_cie2000(color1, color2):
         delta = delta_e_cie2000(color1, color2)
-        return delta.item() if hasattr(delta, 'item') else delta
+        try:
+            return float(delta)
+        except Exception as e:
+            print("Delta conversion error:", e)
+            return 1000  # return a high default to avoid crashing
+
 
     def closest_color(rgb):
         try:
