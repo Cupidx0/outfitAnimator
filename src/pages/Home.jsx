@@ -79,6 +79,7 @@ function Home(){
         if (selectedFile) setFile(selectedFile);
     };
     const handleUploadAndCartoon = async () => {
+      setLoading(true);
         if (!file) {
           toast.error("No file selected");
           return;
@@ -113,6 +114,9 @@ function Home(){
         } catch (err) {
           console.error("Upload error:", err);
           toast.error("An error occurred during upload.");
+        }
+        finally{
+          setLoading(false);
         }
       }; 
       const closett = () =>{
@@ -165,8 +169,9 @@ function Home(){
                     </select>
                     <Button
                     onClick={handleUploadAndCartoon}
+                    disabled={loading}
                     >
-                        submit
+                      {loading ? "Uploading" : "Submit"}
                     </Button>
                 </section>
                 <section className="max-w-sm top-20 ml-6 bg-white text-black rounded-md p-2 -translate-x-8 ">
