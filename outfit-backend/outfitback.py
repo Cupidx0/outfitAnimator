@@ -398,7 +398,18 @@ def cartoonize():
         print(f"Saving file to {filepath}")
         file.save(filepath)
         print(f"File saved: {filepath}")
+        resize_image(filepath, max_size=512)
+        
+        def resize_image(image_path, max_size=512):
+            img = cv2.imread(image_path)
+            height, width = img.shape[:2]
 
+            # Scale while maintaining aspect ratio
+            scale = max_size / max(height, width)
+            new_dim = (int(width * scale), int(height * scale))
+            
+            resized_img = cv2.resize(img, new_dim)
+            cv2.imwrite(image_path, resized_img)  # Overwrite the same file
         # 2. Send to Replicate (example using Toonify)
         print("Sending image to Replicate...")
         #        segmentation_output = replicate.run(
