@@ -79,7 +79,7 @@ function Home(){
         if (selectedFile) setFile(selectedFile);
     };
     const handleUploadAndCartoon = async () => {
-      setLoading(true);
+
         if (!file) {
           toast.error("No file selected");
           return;
@@ -92,7 +92,7 @@ function Home(){
           toast.error("You must be logged in to upload outfits.");
           return;
         }
-      
+        setLoading(true);
         try {  // Replace with dynamic city if you want
 
           const safeFileName = file.name.replace(/\s+/g, "_");
