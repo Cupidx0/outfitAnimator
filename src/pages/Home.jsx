@@ -171,7 +171,7 @@ function Home(){
                     </select>
                     <Button
                       onClick={handleUploadAndCartoon}
-                      //disabled={loadingUpload}
+                      disabled={loadingUpload}
                       startIcon={loadingUpload ? <CircularProgress size={20} color="inherit" /> : null}
                     >
                       {loadingUpload ? "Uploading" : "Submit"}
