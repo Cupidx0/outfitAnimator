@@ -390,8 +390,8 @@ def cartoonize():
         file = request.files['image']
         print("Successfully accessed request.files['image']") # This print will only run if the above line succeeds
 
-        def resize_image(image_path, max_size=512):
-            img = cv2.imread(image_path)
+        def resize_image(filepath, max_size=512):
+            img = cv2.imread(filepath)
             height, width = img.shape[:2]
 
             # Scale while maintaining aspect ratio
@@ -399,7 +399,7 @@ def cartoonize():
             new_dim = (int(width * scale), int(height * scale))
             
             resized_img = cv2.resize(img, new_dim)
-            cv2.imwrite(image_path, resized_img)  # Overwrite the same file
+            cv2.imwrite(filepath, resized_img)  # Overwrite the same file
         # The print below was in your code, but it's after the potential failure point
         # print("Received request to /cartoonize") # This might not be needed anymore with the others
 
@@ -424,6 +424,7 @@ def cartoonize():
         output = replicate.run(
             "catacolabs/cartoonify:f109015d60170dfb20460f17da8cb863155823c85ece1115e1e9e4ec7ef51d3b",
             input={"image": open(filepath, "rb"),
+                   "resolution": 512,
                    "prompt": "A cartoon-style version of the uploaded clothing item without changing the text on the clothing item",
                    "aspect_ratio": "16:9"}
         )
