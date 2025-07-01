@@ -13,11 +13,10 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 import webcolors
+import colour  # this is the actual colorscience library
+from colour import delta_E
 from colour.utilities import as_float_array
-from colour.models import Lab_to_XYZ, XYZ_to_Lab
-from colormath.color_objects import sRGBColor, LabColor
-from colormath.color_conversions import convert_color
-from colormath.color_diff import delta_e_cie2000
+from colour.models import RGB_to_XYZ, XYZ_to_Lab
 from collections import Counter
 import json
   # If this works
@@ -296,11 +295,11 @@ def extract_dominant_colors(filepath, k=3, show_visual=False):
     # Load image
     img = cv2.imread(filepath, cv2.IMREAD_UNCHANGED)
 
-    # Handle transparency by removing alpha channel if present
+    # Handle alpha (transparency)
     if img.shape[-1] == 4:
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-
-    # Handle grayscale by converting to 3-channel RGB
+    
+    # Handle grayscale
     if len(img.shape) == 2 or img.shape[-1] == 1:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
@@ -313,42 +312,38 @@ def extract_dominant_colors(filepath, k=3, show_visual=False):
     labels = kmeans.fit_predict(img_flat)
     centers = kmeans.cluster_centers_.astype(int)
 
-    # Count how many pixels belong to each cluster
+    # Count cluster sizes
     counts = Counter(labels)
     total = sum(counts.values())
+
+    # Load color names
     with open("colors.json") as f:
         CSS3_NAMES_TO_HEX = json.load(f)
-    # Map CSS3 color names to hex
-    LAB_COLORS = {
-        name: convert_color(
-        sRGBColor(*(int(CSS3_NAMES_TO_HEX[name].lstrip("#")[i:i+2], 16) / 255 for i in (0, 2, 4))),
-        LabColor
-        )
-        for name in CSS3_NAMES_TO_HEX
-    }
-    def safe_delta_e_cie2000(color1, color2):
-        delta = delta_e_cie2000(color1, color2)
-        try:
-            return float(delta)
-        except Exception as e:
-            print("Delta conversion error:", e)
-            return 1000  # return a high default to avoid crashing
 
+    # Helper: RGB to LAB
+    def rgb_to_lab(rgb):
+        rgb = np.array(rgb) / 255.0
+        xyz = RGB_to_XYZ(rgb)
+        lab = XYZ_to_Lab(xyz)
+        return lab
 
+    # Find nearest CSS color name
     def closest_color(rgb):
         try:
             return webcolors.rgb_to_name(rgb, spec='css3')
         except ValueError:
-            target_rgb = sRGBColor(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
-            target_lab = convert_color(target_rgb, LabColor)
+            target_lab = rgb_to_lab(rgb)
             min_delta = float('inf')
-            closest_name = None
-            for name, lab in LAB_COLORS.items():
-                delta = safe_delta_e_cie2000(target_lab, lab)
+            closest_name = "unknown"
+
+            for name, hex_val in CSS3_NAMES_TO_HEX.items():
+                css_rgb = tuple(int(hex_val.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+                css_lab = rgb_to_lab(css_rgb)
+                delta = delta_E(target_lab, css_lab, method='CIE 2000')
                 if delta < min_delta:
                     min_delta = delta
-                    closest = name
-            return closest or "unknown"
+                    closest_name = name
+            return closest_name
 
     # Prepare results
     results = []
@@ -363,10 +358,10 @@ def extract_dominant_colors(filepath, k=3, show_visual=False):
             "percentage": percent
         })
 
-    # Sort results by dominance
+    # Sort results
     results.sort(key=lambda x: -x["percentage"])
 
-    # Optional visual output
+    # Optional bar chart
     if show_visual:
         import matplotlib.pyplot as plt
         plt.figure(figsize=(8, 2))
