@@ -390,16 +390,6 @@ def cartoonize():
         file = request.files['image']
         print("Successfully accessed request.files['image']") # This print will only run if the above line succeeds
 
-        # The print below was in your code, but it's after the potential failure point
-        # print("Received request to /cartoonize") # This might not be needed anymore with the others
-
-        filename = secure_filename(file.filename)
-        filepath = f"tmp/{filename}"
-        print(f"Saving file to {filepath}")
-        file.save(filepath)
-        print(f"File saved: {filepath}")
-        resize_image(filepath, max_size=512)
-        
         def resize_image(image_path, max_size=512):
             img = cv2.imread(image_path)
             height, width = img.shape[:2]
@@ -410,6 +400,16 @@ def cartoonize():
             
             resized_img = cv2.resize(img, new_dim)
             cv2.imwrite(image_path, resized_img)  # Overwrite the same file
+        # The print below was in your code, but it's after the potential failure point
+        # print("Received request to /cartoonize") # This might not be needed anymore with the others
+
+        filename = secure_filename(file.filename)
+        filepath = f"tmp/{filename}"
+        print(f"Saving file to {filepath}")
+        file.save(filepath)
+        print(f"File saved: {filepath}")
+        resize_image(filepath, max_size=512)
+
         # 2. Send to Replicate (example using Toonify)
         print("Sending image to Replicate...")
         #        segmentation_output = replicate.run(
