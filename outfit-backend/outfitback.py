@@ -424,7 +424,6 @@ def cartoonize():
         output = replicate.run(
             "catacolabs/cartoonify:f109015d60170dfb20460f17da8cb863155823c85ece1115e1e9e4ec7ef51d3b",
             input={"image": open(filepath, "rb"),
-                   "resolution": 512,
                    "prompt": "A cartoon-style version of the uploaded clothing item without changing the text on the clothing item",
                    "aspect_ratio": "16:9"}
         )
