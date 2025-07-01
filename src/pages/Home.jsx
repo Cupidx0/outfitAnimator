@@ -16,6 +16,7 @@ function Home(){
     const storage = store;
     const [prompt, setPrompt] = useState("");
     const [idea, setIdea] = useState("");
+    const [loadingUpload, setLoadingUpload] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const[category,setCategory]= useState('top');
@@ -92,7 +93,7 @@ function Home(){
           toast.error("You must be logged in to upload outfits.");
           return;
         }
-        setLoading(true);
+        setLoadingUpload(true);
         try {  // Replace with dynamic city if you want
 
           const safeFileName = file.name.replace(/\s+/g, "_");
@@ -116,7 +117,7 @@ function Home(){
           toast.error("An error occurred during upload.");
         }
         finally{
-          setLoading(false);
+          setLoadingUpload(false);
         }
       }; 
       const closett = () =>{
@@ -169,10 +170,10 @@ function Home(){
                     </select>
                     <Button
                       onClick={handleUploadAndCartoon}
-                      disabled={loading}
-                      startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+                      disabled={loadingUpload}
+                      startIcon={loadingUpload ? <CircularProgress size={20} color="inherit" /> : null}
                     >
-                      {loading ? "Uploading" : "Submit"}
+                      {loadingUpload ? "Uploading" : "Submit"}
                     </Button>
                 </section>
                 <section className="max-w-sm top-20 ml-6 bg-white text-black rounded-md p-2 -translate-x-8 ">
