@@ -257,7 +257,7 @@ def generate_outfit_from_closet():
 
         try:
             response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="dall-e-3",
             messages=[
                 {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
                 {"role": "user", "content": prompt}
@@ -272,10 +272,10 @@ def generate_outfit_from_closet():
         # 🎨 Generate DALL·E 3 Image
         try:
             image_response = openai.Image.create(
-                model="dall-e-3",
-                prompt=idea,
-                n=1,
-                size="1024x1024"
+            model="dall-e-3",
+            prompt=idea,
+            n=1,
+            size="1024x1024"
             )
             image_url = image_response["data"][0]["url"]
         except Exception as e:
