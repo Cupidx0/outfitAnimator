@@ -257,7 +257,7 @@ def generate_outfit_from_closet():
 
         try:
             response = openai.ChatCompletion.create(
-            model="dall-e-3",
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
                 {"role": "user", "content": prompt}
