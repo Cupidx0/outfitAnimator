@@ -255,19 +255,43 @@ def generate_outfit_from_closet():
             "Suggest an outfit:"
         )
 
-        response = openai.ChatCompletion.create(
+        try:
+            response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=180,
-            temperature=0.6
-        )
+                max_tokens=180,
+                temperature=0.6
+            )
+            idea = response["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            return jsonify({"error": f"GPT-4 failed: {str(e)}"}), 500
 
-        idea = response["choices"][0]["message"]["content"].strip()
+        # 🎨 Generate DALL·E 3 Image
+        try:
+            image_response = openai.Image.create(
+                model="dall-e-3",
+                prompt=idea,
+                n=1,
+                size="1024x1024"
+            )
+            image_url = image_response["data"][0]["url"]
+        except Exception as e:
+            return jsonify({
+                "outfit_idea": idea,
+                "image_url": None,
+                "temp": temp,
+                "weather_tag": weather_tag,
+                "city": city,
+                "warning": f"DALL·E failed: {str(e)}"
+            }), 200
+
+        # ✅ Return Final Response
         return jsonify({
             "outfit_idea": idea,
+            "image_url": image_url,
             "temp": temp,
             "weather_tag": weather_tag,
             "city": city
