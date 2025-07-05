@@ -15,6 +15,7 @@ function Home(){
     const [file, setFile] = useState(null);
     const {user} = useAuth();
     const storage = store;
+    const [res, setRes] = useState({});
     const [prompt, setPrompt] = useState("");
     const [idea, setIdea] = useState("");
     const [loadingUpload, setLoadingUpload] = useState(false);
@@ -202,13 +203,23 @@ function Home(){
                       >
                         {loading ? "Generating..." : "Get Outfit Idea"}
                       </Button>
-                      {idea && (
-                        <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
-                          <h2 className="font-semibold mb-2">Idea:</h2>
-                          <p>{idea}</p>
-                        </div>
-                      )}
-
+                      {(idea || res?.data?.generated_image_url) && (
+                          <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
+                            {idea && (
+                              <>
+                                <h2 className="font-semibold mb-2">Idea:</h2>
+                                <p>{idea}</p>
+                              </>
+                            )}
+                            {res?.data?.generated_image_url && (
+                              <img
+                                src={res.data.generated_image_url}
+                                alt="Generated Outfit"
+                                className="w-full mt-4 rounded shadow"
+                              />
+                            )}
+                          </div>
+                        )}
                       {error && <p className="text-red-500 mt-4">{error}</p>}
                         <h1 className="font-bold text-[30px] text-center">Ai Generated Fashion Idea</h1>
                     </Link>

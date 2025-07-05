@@ -266,36 +266,43 @@ def generate_outfit_from_closet():
                 temperature=0.6
             )
             idea = response["choices"][0]["message"]["content"].strip()
+            uploaded_image = len(closet_items)>0
+            if not uploaded_image :
+                prompt = (f"Fashion illustration of a complete outfit suitable for {weather_tag} weather, "
+                              f"consisting of: {idea}. High detail, realistic lighting, plain background, "
+                              "modern fashion, professional photoshoot style.")
         except Exception as e:
             return jsonify({"error": f"GPT-4 failed: {str(e)}"}), 500
+        image_url = None
+        if not uploaded_image:
 
-        # 🎨 Generate DALL·E 3 Image
-        try:
-            image_response = openai.Image.create(
-            model="dall-e-3",
-            prompt=idea,
-            n=1,
-            size="1024x1024"
-            )
-            image_url = image_response["data"][0]["url"]
-        except Exception as e:
+            # 🎨 Generate DALL·E 3 Image
+            try:
+                image_response = openai.Image.create(
+                model="dall-e-3",
+                prompt=idea,
+                n=1,
+                size="1024x1024"
+                )
+                image_url = image_response["data"][0]["url"]
+            except Exception as e:
+                return jsonify({
+                    "outfit_idea": idea,
+                    "image_url": None,
+                    "temp": temp,
+                    "weather_tag": weather_tag,
+                    "city": city,
+                    "warning": f"DALL·E failed: {str(e)}"
+                }), 200
+
+            # ✅ Return Final Response
             return jsonify({
                 "outfit_idea": idea,
-                "image_url": None,
+                "image_url": image_url,
                 "temp": temp,
                 "weather_tag": weather_tag,
-                "city": city,
-                "warning": f"DALL·E failed: {str(e)}"
-            }), 200
-
-        # ✅ Return Final Response
-        return jsonify({
-            "outfit_idea": idea,
-            "image_url": image_url,
-            "temp": temp,
-            "weather_tag": weather_tag,
-            "city": city
-        })
+                "city": city
+            })
 
     except Exception as e:
         print("Error in generate_outfit_from_closet:", e)
