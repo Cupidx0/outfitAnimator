@@ -231,14 +231,14 @@ def generate_outfit_from_closet():
             excluded_items = "short, tank tops" 
         # Create prompt
         prompt = (
-            f"You are a fashion assistant. Based on the closet items below and the current weather, suggest a complete outfit. "
             f"Users special request: {prompt_text}.\n"
+            f"You are a fashion assistant. Based on the Users special request, use the closet items below and the current weather, suggest a complete outfit.\n"
             f"Use 3 to 5 items from the closet, ideally covering each category (e.g., top, bottom, shoes, accessory).\n"
             f"Closet items: {closet_text}.\n"
             f"Weather: {weather_tag}, temperature: {temp}°C.\n"
             f"Prominent closet colors: {colors_description}.\n"
             f"Use color coordination and include at least one accent color (a color with low percentage in the closet).\n"
-            f"Match the right colors with the right clothing categories.\n"
+            f"Match the right colors with the appropriate clothing categories.\n"
             f"Example: a black top, blue jeans, and white sneakers.\n"
         )
 
