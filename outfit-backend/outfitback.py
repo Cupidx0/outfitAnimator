@@ -176,7 +176,9 @@ def generate_outfit_from_closet():
         city = data.get("city", "London")
         lat = data.get("lat")
         lon = data.get("lon")
-        
+        prompt_text = data.get('prompt','').strip()
+        if not prompt_text:
+            prompt_text = "suggest a fashionable and weather -appropriate outfit."
         category = data.get("category", "unknown")
         dominant_colors = data.get("dominantColors")
         if not user_id:
@@ -189,15 +191,15 @@ def generate_outfit_from_closet():
             weather_data = get_weather(city, api_key)
         temp = weather_data.get("temp")
         weather_tag = infer_weather_tag_from_category(category)
-        weather_fit =  outfit_suggestion()
+        #weather_fit =  outfit_suggestion()
         # Get user's closet items
         closet_items = []
+        all_colors = []
         docs = db.collection("closet").where("userId", "==", user_id).stream()
         for doc in docs:
             item = doc.to_dict()
             category = item.get("category","unknown")
             dominant_colors = item.get("dominantColors",[])
-            all_colors = []
             filtered_colors = []
             if isinstance(dominant_colors, list):
                 for color in dominant_colors:
@@ -229,7 +231,8 @@ def generate_outfit_from_closet():
             excluded_items = "short, tank tops" 
         # Create prompt
         prompt = (
-            f"You are a fashion assistant. Based on the closet items below and the current weather, suggest a complete outfit.\n"
+            f"You are a fashion assistant. Based on the closet items below and the current weather, suggest a complete outfit. "
+            f"Users special request: {prompt_text}.\n"
             f"Use 3 to 5 items from the closet, ideally covering each category (e.g., top, bottom, shoes, accessory).\n"
             f"Closet items: {closet_text}.\n"
             f"Weather: {weather_tag}, temperature: {temp}°C.\n"
@@ -249,12 +252,11 @@ def generate_outfit_from_closet():
             "Only use closet items available in the user's closet.\n"
             "Example (for warm weather): 'The weather is hot at 30°C, so you can wear a black T-shirt, black shorts, and sneakers.'\n"
             "Do not mention weather tags like 'all-weather'.\n"
-            "Only use Prominent closet colors of a category for the category.'example: black joggers'.\n"
+            "Only use prominent closet colors that belong to a clothing category. Example: 'black joggers'.\n"
             "If the input is unrelated to fashion (e.g., math, sports, general knowledge), reply with: "
             "'Sorry, I can only help with outfit suggestions.'\n"
             "Suggest an outfit:"
         )
-
         try:
             response = openai.ChatCompletion.create(
             model="gpt-4",
@@ -266,23 +268,23 @@ def generate_outfit_from_closet():
                 temperature=0.6
             )
             idea = response["choices"][0]["message"]["content"].strip()
-            uploaded_image = len(closet_items)>0
-            if not uploaded_image :
-                prompt = (f"Fashion illustration of a complete outfit suitable for {weather_tag} weather, "
-                              f"consisting of: {idea}. High detail, realistic lighting, plain background, "
-                              "modern fashion, professional photoshoot style.")
         except Exception as e:
             return jsonify({"error": f"GPT-4 failed: {str(e)}"}), 500
         image_url = None
-        if not uploaded_image:
+        if not closet_items:
 
             # 🎨 Generate DALL·E 3 Image
+            promptt = (
+                f"Fashion illustration of a complete outfit suitable for {weather_tag} weather, "
+                f"consisting of: {idea}. High detail, realistic lighting, plain background, "
+                "modern fashion, professional photoshoot style."
+            )
             try:
                 image_response = openai.Image.create(
-                model="dall-e-3",
-                prompt=idea,
-                n=1,
-                size="1024x1024"
+                    model="dall-e-3",
+                    prompt=promptt,
+                    n=1,
+                    size="1024x1024"
                 )
                 image_url = image_response["data"][0]["url"]
             except Exception as e:
@@ -296,13 +298,13 @@ def generate_outfit_from_closet():
                 }), 200
 
             # ✅ Return Final Response
-            return jsonify({
-                "outfit_idea": idea,
-                "image_url": image_url,
-                "temp": temp,
-                "weather_tag": weather_tag,
-                "city": city
-            })
+        return jsonify({
+            "outfit_idea": idea,
+            "image_url": image_url,
+            "temp": temp,
+            "weather_tag": weather_tag,
+            "city": city
+        })
 
     except Exception as e:
         print("Error in generate_outfit_from_closet:", e)

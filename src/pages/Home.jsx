@@ -21,7 +21,7 @@ function Home(){
     const [loadingUpload, setLoadingUpload] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const[category,setCategory]= useState('top');
+    const[category,setCategory]= useState('');
     const [coords, setCoords] = useState(null);
     const BETA_NOTICE_MESSAGE = "⚠️ Beta Notice: This page is currently in beta and still under construction. Some features may be incomplete or not work as expected. We're actively improving it thank you for your patience!";
     const info = () => {
@@ -158,7 +158,7 @@ function Home(){
                       />
                     )}
                     <select onChange={(e)=>setCategory(e.target.value)} className="text-white">
-                        <option value='' disabled selected>select an option</option>
+                        <option value='' disabled>select an option</option>
                         <optgroup label="👕 Tops">
                         <option value='top'>Top</option>
                         <option value='hoodies'>Hoodies</option>
@@ -203,23 +203,23 @@ function Home(){
                       >
                         {loading ? "Generating..." : "Get Outfit Idea"}
                       </Button>
-                      {(idea || res?.data?.generated_image_url) && (
-                          <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
-                            {idea && (
-                              <>
-                                <h2 className="font-semibold mb-2">Idea:</h2>
-                                <p>{idea}</p>
-                              </>
-                            )}
-                            {res?.data?.generated_image_url && (
-                              <img
-                                src={res.data.generated_image_url}
-                                alt="Generated Outfit"
-                                className="w-full mt-4 rounded shadow"
-                              />
-                            )}
-                          </div>
-                        )}
+                      {(idea || res?.data?.image_url) && (
+                            <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
+                              {idea && (
+                                <>
+                                  <h2 className="font-semibold mb-2">Idea:</h2>
+                                  <p>{idea}</p>
+                                </>
+                              )}
+                              {res?.data?.image_url && (
+                                <img
+                                  src={res.data.image_url}
+                                  alt="Generated Outfit"
+                                  className="w-full mt-4 rounded shadow"
+                                />
+                              )}
+                            </div>
+                          )}
                       {error && <p className="text-red-500 mt-4">{error}</p>}
                         <h1 className="font-bold text-[30px] text-center">Ai Generated Fashion Idea</h1>
                     </Link>
