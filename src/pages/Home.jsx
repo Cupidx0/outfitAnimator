@@ -211,12 +211,14 @@ function Home(){
                                   <p>{idea}</p>
                                 </>
                               )}
-                              {res?.data?.image_url && (
+                              {res?.data?.image_url ?(
                                 <img
                                   src={res.data.image_url}
                                   alt="Generated Outfit"
                                   className="w-full mt-4 rounded shadow"
                                 />
+                              ):(
+                                <p>No image generated</p>
                               )}
                             </div>
                           )}
