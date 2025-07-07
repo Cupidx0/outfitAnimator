@@ -70,6 +70,7 @@ function Home(){
           prompt,
         });
         setIdea(res.data.outfit_idea);
+        setRes({ data: res.data });
       } catch (err) {
         console.error("Error:", err);
         setError("Something went wrong. Try again.");
@@ -187,7 +188,6 @@ function Home(){
                     </Link>
                 </section> 
                 <section className="max-w-sm top-20 ml-6 bg-white text-black rounded-md p-2 -translate-x-8 ">
-                    <Link to='/'>
                       <textarea
                         className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring focus:ring-black"
                         placeholder="What should I wear to a beach party?"
@@ -222,7 +222,6 @@ function Home(){
                           )}
                       {error && <p className="text-red-500 mt-4">{error}</p>}
                         <h1 className="font-bold text-[30px] text-center">Ai Generated Fashion Idea</h1>
-                    </Link>
                 </section> 
             </div>           
         </div>
