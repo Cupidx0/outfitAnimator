@@ -52,8 +52,10 @@ function Home(){
       info();
     }, []);
     const handleGenerate = async () => {
-      if (!prompt.trim()) return;
-  
+      if (prompt.trim().length < 10) {
+        toast.error("Please enter a more detailed prompt.");
+        return;
+      }
       setLoading(true);
       setError("");
       setIdea("");
@@ -125,6 +127,7 @@ function Home(){
           if (data.cartoonUrl) {
             toast.success("Outfit uploaded & stylized successfully!");
             setFile(null);
+            setCategory("");
           } else {
             toast.error("Stylized version failed to generate.");
           }
@@ -187,7 +190,7 @@ function Home(){
                     </select>
                     <Button
                       onClick={handleUploadAndCartoon}
-                      disabled={loadingUpload}
+                      disabled={loadingUpload || !file || !category}
                       startIcon={loadingUpload ? <CircularProgress size={20} color="inherit" /> : null}
                     >
                       {loadingUpload ? "Uploading" : "Submit"}
@@ -215,25 +218,35 @@ function Home(){
                       >
                         {loading ? "Generating..." : "Get Outfit Idea"}
                       </Button>
-                      {(idea || res?.data?.image_url) && (
-                            <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
-                              {idea && (
-                                <>
-                                  <h2 className="font-semibold mb-2">Idea:</h2>
-                                  <p>{idea}</p>
-                                </>
-                              )}
-                              {res?.data?.image_url ?(
-                                <img
-                                  src={res.data.image_url}
-                                  alt="Generated Outfit"
-                                  className="w-full mt-4 rounded shadow"
-                                />
-                              ):(
-                                <p>No image generated</p>
-                              )}
-                            </div>
-                          )}
+                      {loading ? (
+                        <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700 animate-pulse">
+                          <div className="h-6 bg-gray-300 rounded w-3/4 mb-4"></div>
+                          <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
+                          <div className="h-4 bg-gray-300 rounded w-5/6 mb-2"></div>
+                          <div className="h-4 bg-gray-300 rounded w-2/3 mb-4"></div>
+                          <div className="w-full h-48 bg-gray-300 rounded"></div>
+                        </div>
+                      ) : (
+                        (idea || res?.data?.image_url) && (
+                          <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-sm border text-gray-700">
+                            {idea && (
+                              <>
+                                <h2 className="font-semibold mb-2">Idea:</h2>
+                                <p>{idea}</p>
+                              </>
+                            )}
+                            {res?.data?.image_url ? (
+                              <img
+                                src={res.data.image_url}
+                                alt="Generated Outfit"
+                                className="w-full mt-4 rounded shadow"
+                              />
+                            ) : (
+                              <p>No image generated</p>
+                            )}
+                          </div>
+                        )
+                      )}
                       {error && <p className="text-red-500 mt-4">{error}</p>}
                         <h1 className="font-bold text-[30px] text-center">Ai Generated Fashion Idea</h1>
                 </section> 
