@@ -178,7 +178,7 @@ def generate_outfit_from_closet():
         lon = data.get("lon")
         prompt_text = data.get('prompt','').strip()
         if not prompt_text:
-            prompt_text = "suggest a fashionable and weather -appropriate outfit."
+            image_url = generate_dalle_image(prompt)
         category = data.get("category", "unknown")
         dominant_colors = data.get("dominantColors")
         if not user_id:
