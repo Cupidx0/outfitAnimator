@@ -204,7 +204,7 @@ function Home(){
                 </section> 
                 <section className="max-w-sm top-20 ml-6 bg-white text-black rounded-md p-2 -translate-x-8 ">
                       <textarea
-                        className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring focus:ring-black"
+                        className="w-full p-3 border border-gray-300 rounded-lg mb-4 text-white focus:outline-none focus:ring focus:ring-black"
                         placeholder="What should I wear to a beach party?"
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
