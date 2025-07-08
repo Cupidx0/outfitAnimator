@@ -168,6 +168,18 @@ def outfit_suggestion():
         })
     else:
         return jsonify({"error": "Could not retrieve weather data."}), 400
+def generate_dalle_image(prompt):
+    try:
+        response = openai.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            n=1,
+            size="1024x1024"
+        )
+        return response.data[0].url
+    except Exception as e:
+        print(f"DALL·E generation failed: {e}")
+        return None
 @outfitback.route('/generate-outfit-from-closet', methods=['POST'])
 def generate_outfit_from_closet():
     try:
@@ -178,7 +190,10 @@ def generate_outfit_from_closet():
         lon = data.get("lon")
         prompt_text = data.get('prompt','').strip()
         if not prompt_text:
-            image_url = generate_dalle_image(prompt)
+            default_prompt = "a trendy, weather-appropriate outfit for a young adult, full body, plain background"
+            image_url = generate_dalle_image(default_prompt)
+        else:
+            image_url = generate_dalle_image(prompt_text)
         category = data.get("category", "unknown")
         dominant_colors = data.get("dominantColors")
         if not user_id:
