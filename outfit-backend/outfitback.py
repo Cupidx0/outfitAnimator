@@ -423,7 +423,7 @@ def extract_dominant_colors(filepath, k=3, show_visual=False):
 
     return results
 
-@outfitback.route('/cartoonize',methods=['post'])
+@outfitback.route('/cartoonize',methods=['POST'])
 def cartoonize():
     os.makedirs("/tmp", exist_ok=True)
     # Add prints *before* the try block
