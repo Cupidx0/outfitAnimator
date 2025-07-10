@@ -168,18 +168,33 @@ def outfit_suggestion():
         })
     else:
         return jsonify({"error": "Could not retrieve weather data."}), 400
-@outfitback.route('/generate_dalle_image', methods=['POST'])
-def generate_dalle_image(prompt):
+def generate_dalle_image_helper(prompt_text):
     try:
-        response = openai.Image.generate(
-            prompt=prompt,
+        response = openai.Image.create(
+            model="dall-e-3",
+            prompt=prompt_text,
             n=1,
             size="1024x1024"
         )
-        return response.data[0].url
+        return response["data"][0]["url"]
     except Exception as e:
         print(f"DALL·E generation failed: {e}")
         return None
+
+# Flask route that accepts POST JSON {prompt: "..."} and returns JSON with URL
+@outfitback.route('/generate_dalle_image', methods=['POST'])
+def generate_dalle_image_route():
+    data = request.get_json()
+    prompt = data.get('prompt')
+    if not prompt:
+        return jsonify({"error": "Missing prompt"}), 400
+
+    url = generate_dalle_image_helper(prompt)
+    if not url:
+        return jsonify({"error": "Failed to generate image"}), 500
+
+    return jsonify({"url": url})
+
 @outfitback.route('/generate-outfit-from-closet', methods=['POST'])
 def generate_outfit_from_closet():
     try:
@@ -191,9 +206,9 @@ def generate_outfit_from_closet():
         prompt_text = data.get('prompt','').strip()
         if not prompt_text:
             default_prompt = "a trendy, weather-appropriate outfit for a young adult, full body, plain background"
-            image_url = generate_dalle_image(default_prompt)
+            image_url = generate_dalle_image_helper(default_prompt)
         else:
-            image_url = generate_dalle_image(prompt_text)
+            image_url = generate_dalle_image_helper(prompt_text)
         category = data.get("category", "unknown")
         dominant_colors = data.get("dominantColors")
         if not user_id:
