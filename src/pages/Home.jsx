@@ -74,9 +74,11 @@ function Home(){
         setIdea(res.data.outfit_idea);
         setRes({ data: res.data });
         if (!res.data.image_url && res.data.outfit_idea) {
-          const dalle = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/generate_dalle_image`, {
-          prompt: res.data.outfit_idea,
-        });
+          const dalle = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/generate_dalle_image`,
+          { prompt: res.data.outfit_idea },
+          { withCredentials: true } // Add this!
+        );
         setRes(prev => ({
           ...prev,
           data: {
