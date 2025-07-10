@@ -172,7 +172,6 @@ def outfit_suggestion():
 def generate_dalle_image(prompt):
     try:
         response = openai.Image.generate(
-            model="dall-e-3",
             prompt=prompt,
             n=1,
             size="1024x1024"
@@ -297,7 +296,6 @@ def generate_outfit_from_closet():
             )
             try:
                 image_response = openai.Image.create(
-                    model="dall-e-3",
                     prompt=promptt,
                     n=1,
                     size="1024x1024"
