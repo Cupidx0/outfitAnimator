@@ -168,7 +168,7 @@ def outfit_suggestion():
         })
     else:
         return jsonify({"error": "Could not retrieve weather data."}), 400
-@outfitback.route('/generate_dalle_image')
+@outfitback.route('/generate_dalle_image', methods=['POST'])
 def generate_dalle_image(prompt):
     try:
         response = openai.images.generate(
