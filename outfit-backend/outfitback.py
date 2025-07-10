@@ -171,7 +171,7 @@ def outfit_suggestion():
 @outfitback.route('/generate_dalle_image', methods=['POST'])
 def generate_dalle_image(prompt):
     try:
-        response = openai.images.generate(
+        response = openai.Image.generate(
             model="dall-e-3",
             prompt=prompt,
             n=1,
