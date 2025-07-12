@@ -305,9 +305,10 @@ def generate_outfit_from_closet():
 
             # 🎨 Generate DALL·E 3 Image
             promptt = (
-                f"Fashion illustration of a complete outfit suitable for {weather_tag} weather, "
-                f"consisting of: {prompt_text}. High detail, realistic lighting, plain background, "
-                "modern fashion, professional photoshoot style."
+                f"Fashion illustration of a complete outfit suitable for {weather_tag} weather.\n"
+                f"it should of the: {prompt_text}. High detail, realistic lighting, plain background, "
+                "modern fashion, professional photoshoot style.\n"
+                "suggest an outfit :"
             )
             try:
                 image_response = openai.Image.create(
