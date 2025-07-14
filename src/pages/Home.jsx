@@ -60,68 +60,48 @@ function Home(){
       setError("");
       setIdea("");
 
-      if (!user || !user.uid) {
-          try {
-            const gptRes = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/generate-outfit-from-closet`, {
-              userId: null,  // still pass null
-              lat: coords?.lat ?? null,
-              lon: coords?.lon ?? null,
-              prompt,
-            });
-
-            const idea = gptRes.data.outfit_idea;
-            setIdea(idea);
-
-            const dalle = await axios.post(
-              `${import.meta.env.VITE_BACKEND_URL}/generate_dalle_image`,
-              { prompt: `Fashion illustration of ${idea}, flat design, white background, detailed` },
-              { withCredentials: true }
-            );
-
-            setRes({
-              data: {
-                outfit_idea: idea,
-                image_url: dalle.data.image_url,
-              }
-            });
-
-            setError("Please log in to save this idea or upload outfits.");
-            return;
-          } catch (err) {
-            console.error(err);
-            setError("Generation failed. Try again.");
-            return;
-          }
-        }
+      try {
         const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/generate-outfit-from-closet`, {
-          userId:user && user.uid ? user.uid : null,  // dynamically pull this from auth or localStorage
+          userId: user?.uid || null,
           lat: coords?.lat ?? null,
           lon: coords?.lon ?? null,
           prompt,
         });
-        setIdea(res.data.outfit_idea);
-        setRes({ data: res.data });
-        if (!res.data.image_url && res.data.outfit_idea) {
+
+        const idea = res.data.outfit_idea;
+        setIdea(idea);
+
+        // If there's no image_url from backend, generate one via DALL·E
+        if (!res.data.image_url && idea) {
           const dalle = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/generate_dalle_image`,
-          { prompt: res.data.outfit_idea },
-          { withCredentials: true } // Add this!
-        );
-        setRes(prev => ({
-          ...prev,
-          data: {
-            ...prev.data,
-            image_url: dalle.data.image_url,
-          },
-        }));
-    }
+            `${import.meta.env.VITE_BACKEND_URL}/generate_dalle_image`,
+            { prompt: `Fashion illustration of ${idea}, flat design, white background, detailed` },
+            { withCredentials: true }
+          );
+
+          setRes({
+            data: {
+              ...res.data,
+              image_url: dalle.data.image_url,
+            },
+          });
+        } else {
+          setRes({ data: res.data });
+        }
+
+        // If unauthenticated, show save/upload warning
+        if (!user?.uid) {
+          setError("Please log in to save this idea or upload outfits.");
+        }
+
       } catch (err) {
-        console.error("Error:", err);
-        setError("Something went wrong. Try again.");
+        console.error(err);
+        setError("Generation failed. Try again.");
       } finally {
         setLoading(false);
       }
-    }
+    };
+
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) setFile(selectedFile);
