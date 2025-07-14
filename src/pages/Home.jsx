@@ -60,10 +60,38 @@ function Home(){
       setError("");
       setIdea("");
 
-      try {
-        if(!user||!user.uid){
-          setError("Please log in to use this feature.");
-          return;
+      if (!user || !user.uid) {
+          try {
+            const gptRes = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/generate-outfit-from-closet`, {
+              userId: null,  // still pass null
+              lat: coords?.lat ?? null,
+              lon: coords?.lon ?? null,
+              prompt,
+            });
+
+            const idea = gptRes.data.outfit_idea;
+            setIdea(idea);
+
+            const dalle = await axios.post(
+              `${import.meta.env.VITE_BACKEND_URL}/generate_dalle_image`,
+              { prompt: `Fashion illustration of ${idea}, flat design, white background, detailed` },
+              { withCredentials: true }
+            );
+
+            setRes({
+              data: {
+                outfit_idea: idea,
+                image_url: dalle.data.image_url,
+              }
+            });
+
+            setError("Please log in to save this idea or upload outfits.");
+            return;
+          } catch (err) {
+            console.error(err);
+            setError("Generation failed. Try again.");
+            return;
+          }
         }
         const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/generate-outfit-from-closet`, {
           userId:user && user.uid ? user.uid : null,  // dynamically pull this from auth or localStorage
