@@ -61,7 +61,7 @@ function Home(){
       setIdea("");
 
       try {
-        const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/generate-outfit-from-closet`, {
+        const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/generate_outfit_from_closet`, {
           userId: user?.uid || null,
           lat: coords?.lat ?? null,
           lon: coords?.lon ?? null,
