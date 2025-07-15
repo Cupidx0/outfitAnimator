@@ -204,11 +204,6 @@ def generate_outfit_from_closet():
         lat = data.get("lat")
         lon = data.get("lon")
         prompt_text = data.get('prompt','').strip()
-        if not prompt_text:
-            default_prompt = "a trendy, weather-appropriate outfit for a young adult, full body, plain background"
-            image_url = generate_dalle_image_helper(default_prompt)
-        else:
-            image_url = generate_dalle_image_helper(prompt_text)
         category = data.get("category", "unknown")
         dominant_colors = data.get("dominantColors")
         if not user_id:
@@ -241,7 +236,7 @@ def generate_outfit_from_closet():
             closet_items.append(
                 f"({category}) ({',' .join(filtered_colors) if filtered_colors else 'mixed'}) ({item.get('weather_Tag', 'unknown')})"
             )
-
+        closet_empty = len(closet_items) == 0
         closet_text = ", ".join(closet_items) if closet_items else "no clothing items available"
 
         # Sort by percentage and get unique colors
@@ -261,31 +256,20 @@ def generate_outfit_from_closet():
             excluded_items = "short, tank tops" 
         # Create prompt
         prompt = (
-            f"Users special request: {prompt_text}.\n"
-            f"You are a fashion assistant. Based on the Users special request, use the closet items below and the current weather, suggest a complete outfit.\n"
-            f"Use 3 to 5 items from the closet, ideally covering each category (e.g., top, bottom, shoes, accessory).\n"
+            f"Users special request: {prompt_text or 'none'}.\n"
+            "You are a fashion assistant. Based on the user’s request, the closet items, and the current weather, suggest a complete outfit.\n"
+            "Use 3 to 5 items from the closet covering each category (e.g., top, bottom, shoes, accessory).\n"
             f"Closet items: {closet_text}.\n"
+            "If the closet is empty, create a new outfit idea based on the weather.\n"
             f"Weather: {weather_tag}, temperature: {temp}°C.\n"
             f"Prominent closet colors: {colors_description}.\n"
-            f"Use color coordination and include at least one accent color (a color with low percentage in the closet).\n"
-            f"Match the right colors with the appropriate clothing categories.\n"
-            f"Do not randomly add use a color from a category in another category .\n"
-            f"Example: a black top, blue jeans, and white sneakers.\n"
-        )
-
-        if excluded_items:
-            prompt += f"Exclude items like {excluded_items} because the weather is warm.\n"
-
-        prompt += (
-            "Only include items that are weather-appropriate and look good together.\n"
-            "Format the response as a short sentence listing the outfit.\n"
-            "Start with a short comment about the temperature, e.g., 'The weather is hot at 30°C, so you can wear...'\n"
-            "Only use closet items available in the user's closet.\n"
-            "Example (for warm weather): 'The weather is hot at 30°C, so you can wear a black T-shirt, black shorts, and sneakers.'\n"
-            "Do not mention weather tags like 'all-weather'.\n"
-            "Only use prominent closet colors that belong to a clothing category. Example: 'black joggers'.\n"
-            "If the input is unrelated to fashion (e.g., math, sports, general knowledge), reply with: "
-            "'Sorry, I can only help with outfit suggestions.'\n"
+            f"{'Exclude items like ' + excluded_items + '.' if excluded_items else ''}\n"
+            "Use color coordination and include at least one accent color (low-percentage color).\n"
+            "Only use closet colors that match appropriate clothing categories.\n"
+            "Do not assign colors randomly. Example: a black top, blue jeans, and white sneakers.\n"
+            "Start with a short sentence about the temperature.\n"
+            "Only use available closet items if any exist.\n"
+            "If the input is unrelated to fashion, reply: 'Sorry, I can only help with outfit suggestions.'\n"
             "Suggest an outfit:"
         )
         try:
@@ -302,14 +286,11 @@ def generate_outfit_from_closet():
         except Exception as e:
             return jsonify({"error": f"GPT-4 failed: {str(e)}"}), 500
         image_url = None
-        if not closet_items:
-
-            # 🎨 Generate DALL·E 3 Image
+        if closet_empty:
             promptt = (
-                f"Fashion illustration of a complete outfit suitable for {weather_tag} weather.\n"
-                f"it should have the: {idea}. High detail, realistic lighting, plain background, "
-                "modern fashion, professional photoshoot style.\n"
-                "suggest an outfit :"
+                f"Full-body fashion illustration of a modern outfit that includes: {idea}. "
+                f"Styled for {weather_tag} weather, realistic lighting, plain background, "
+                "professional editorial photo aesthetic, contemporary fashion photography."
             )
             try:
                 image_response = openai.Image.create(
