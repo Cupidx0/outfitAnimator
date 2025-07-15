@@ -195,7 +195,7 @@ def generate_dalle_image_route():
 
     return jsonify({"url": url})
 
-@outfitback.route('/generate-outfit-from-closet', methods=['POST'])
+@outfitback.route('/generate_outfit_from_closet', methods=['POST'])
 def generate_outfit_from_closet():
     try:
         data = request.get_json()
