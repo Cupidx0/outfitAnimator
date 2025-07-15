@@ -269,6 +269,7 @@ def generate_outfit_from_closet():
             f"Prominent closet colors: {colors_description}.\n"
             f"Use color coordination and include at least one accent color (a color with low percentage in the closet).\n"
             f"Match the right colors with the appropriate clothing categories.\n"
+            f"Do not randomly add use a color from a category in another category .\n"
             f"Example: a black top, blue jeans, and white sneakers.\n"
         )
 
