@@ -291,6 +291,7 @@ def generate_outfit_from_closet():
                 f"Full-body fashion illustration of a modern outfit that includes: {idea}. "
                 f"Styled for {weather_tag} weather, realistic lighting, plain background, "
                 "professional editorial photo aesthetic, contemporary fashion photography."
+                "generating life like images for the output."
             )
             try:
                 image_response = openai.Image.create(
