@@ -7,7 +7,7 @@ import Home from './pages/Home.jsx'
 import Login from './pages/login.jsx'
 import SignUp from './pages/signup.jsx'
 import Services from './pages/Services.jsx'
-import About from './pages/About.jsx'
+import Aboutme from './pages/About.jsx'
 import Privacy from './pages/PrivacyPolicy.jsx'
 import Terms from './pages/Terms.jsx'
 import Faq from './pages/Faq.jsx'
@@ -24,7 +24,7 @@ function App() {
               <Route path="/signup" element ={<SignUp/>}/>
               <Route path="/login"  element ={<Login/>}/>
               <Route path="/services" element={<Services/>} />
-              <Route path="/about" element={<About/>} />
+              <Route path="/about" element={<Aboutme/>} />
               <Route path="/privacy" element={<Privacy/>} />
               <Route path="/terms" element={<Terms/>} />
               <Route path="/faq" element={<Faq/>}/>
