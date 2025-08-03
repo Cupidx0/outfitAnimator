@@ -17,7 +17,7 @@ function Footer(){
                             <Link to="/home">Home</Link>
                         </li>
                         <li className="hover:text-blue-500 transition-transform hover:scale-105">
-                            <Link to="/j">Services</Link>
+                            <Link to="/services">Services</Link>
                         </li>
                         <li className="hover:text-blue-500 transition-transform hover:scale-105">
                             <a href="/j">Products</a>
@@ -28,13 +28,13 @@ function Footer(){
                 <nav>
                     <ul className="space-y-2">
                       <li className="hover:text-blue-500 transition-transform hover:scale-105">
-                        <a href="/k">About</a>
+                        <Link to="/about">About</Link>
                       </li>
                       <li className="hover:text-blue-500 transition-transform hover:scale-105">
                         <a href="/contact">Contact</a>
                       </li>
                       <li className="hover:text-blue-500 transition-transform hover:scale-105">
-                        <a href="/privacy">Privacy Policy</a>
+                        <Link to="/privacy">Privacy Policy</Link>
                       </li>
                     </ul>
                 </nav>
@@ -42,10 +42,10 @@ function Footer(){
                 <nav>
                     <ul className="space-y-2">
                       <li className="hover:text-blue-500 transition-transform hover:scale-105">
-                        <a href="/terms">Terms</a>
+                        <Link to="/terms">Terms</Link>
                       </li>
                       <li className="hover:text-blue-500 transition-transform hover:scale-105">
-                        <a href="/faq">FAQ</a>
+                        <Link to="/faq">FAQ</Link>
                       </li>
                       <li className="hover:text-blue-500 transition-transform hover:scale-105">
                         <Link to="/signup">Sign Up</Link>
