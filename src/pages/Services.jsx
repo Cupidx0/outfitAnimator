@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 
 export const Services = () => {
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
-            <h1>Our Services</h1>
+        <div className="flex flex-col md:flex-row h-[600px] p-5 m-6 bg-black gap-4 rounded-md border border-white !overflow-auto">
+            <h1 className="font-bold text-xl">Our Services</h1>
             <p>
                 At OutfitGen, we are dedicated to helping you look your best every day. Our services are designed to make fashion easy, accessible, and personalized for everyone.
             </p>
-            <h2>What We Offer</h2>
+            <h2 className="font-semibold text-lg">What We Offer</h2>
             <ul>
                 <li>
                     <strong>Personalized Outfit Recommendations:</strong> Get daily outfit suggestions tailored to your style, preferences, and the weather.
@@ -23,7 +23,7 @@ export const Services = () => {
                     <strong>Shopping Assistance:</strong> Receive recommendations for new pieces that match your style and fill gaps in your wardrobe.
                 </li>
             </ul>
-            <h2>Why Choose Us?</h2>
+            <h2 className="font-semibold text-lg">Why Choose Us?</h2>
             <p>
                 Our platform uses advanced algorithms and the latest fashion trends to provide you with the best outfit ideas. Whether you're dressing for work, a special occasion, or just a casual day out, OutfitGen has you covered.
             </p>

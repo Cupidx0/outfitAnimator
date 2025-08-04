@@ -3,7 +3,7 @@ import {Link} from "react-router-dom";
 
 export const Terms = () => {
     return (
-        <div style={{ maxWidth: 700, margin: "40px auto", padding: 24 }}>
+        <div className="flex flex-col md:flex-row h-[600px] p-5 m-6 bg-black gap-4 rounded-md border border-white !overflow-auto">
             <h1>Terms and Conditions</h1>
             <p>
                 Welcome to OutfitGen. By accessing or using our website, you agree to be bound by these Terms and Conditions. Please read them carefully.
