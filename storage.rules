@@ -1,0 +1,10 @@
+rules_version = '2';
+// Uploads go through the backend (Admin SDK). Stylized images are made public
+// per file by the backend, so browsers need no access through these rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

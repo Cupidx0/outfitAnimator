@@ -1,0 +1,49 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build output and dependencies
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
+
+# Editor and OS files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Secrets: never commit these
+.env
+.env.*
+outfit-backend/outfitstyle.json
+outfitgenerator-*.json
+*service-account*.json
+bfg-replacements.txt
+blob-ids.txt
+*.bfg-report/
+..bfg-report/
+outfitAnimator.git/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+outfit-backend/tmp/
+outfit-backend/segmented.png
+
+.vercel
