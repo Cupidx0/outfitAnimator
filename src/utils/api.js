@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 
-const API = import.meta.env.VITE_BACKEND_URL;
+const API = import.meta.env.VITE_BACKEND_URL||'http://localhost:5174';
 
 // Calls the backend as the signed in user. The backend verifies the Firebase ID token.
 export async function api(path, { method = 'GET', json, form } = {}) {

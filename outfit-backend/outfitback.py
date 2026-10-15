@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, g
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
@@ -36,7 +36,7 @@ SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "/etc/secrets/
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4")
 IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3")
 ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS", "https://outfit-animator.vercel.app,http://localhost:5173"
+    "ALLOWED_ORIGINS", "https://outfit-animator.vercel.app,http://localhost:5174"
 ).split(",")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 # Must match the category values offered by the frontend.
