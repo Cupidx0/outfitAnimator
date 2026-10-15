@@ -199,7 +199,7 @@ def upload_public(data, path, content_type):
 def generate_image(prompt_text, uid):
     """Generates an image and copies it to Firebase Storage, since OpenAI's URLs expire after an hour."""
     options = {"response_format": "b64_json"} if IMAGE_MODEL.startswith("dall-e") else {}
-    response = get_openai().images.generate(
+    response = get_openai().client.images.generate(
         model=IMAGE_MODEL, prompt=prompt_text, n=1, size="1024x1024", **options
     )
     image_bytes = base64.b64decode(response.data[0].b64_json)
@@ -269,7 +269,7 @@ def generate_outfit_from_closet():
         "Suggest an outfit:"
     )
     try:
-        response = get_openai().chat.completions.create(
+        response = get_openai().client.chat.completions.create(
             model=CHAT_MODEL,
             messages=[
                 {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
