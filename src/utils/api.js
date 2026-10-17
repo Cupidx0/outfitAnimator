@@ -1,6 +1,10 @@
 import { auth } from './firebase';
+const getBaseURL = () => {
+  const envBaseUrl = "http://127.0.0.1:5000";//import.meta.env.VITE_BACKEND_URL;
+  return envBaseUrl || "http://127.0.0.1:5000";
+};
 
-const API = import.meta.env.VITE_BACKEND_URL||'http://localhost:5174';
+const API = getBaseURL();
 
 // Calls the backend as the signed in user. The backend verifies the Firebase ID token.
 export async function api(path, { method = 'GET', json, form } = {}) {

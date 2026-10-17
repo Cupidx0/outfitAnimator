@@ -1,24 +1,28 @@
-from flask import Flask, request, jsonify
+from io import BytesIO
+
+from flask import Flask, request, jsonify,g
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 from functools import wraps, lru_cache
 from collections import Counter
 from urllib.parse import unquote, urlparse
-import base64
 import json
 import os
 import shutil
 import tempfile
 import traceback
 import uuid
-
-import replicate
+import logging
+#import replicate
+from google import genai
+from PIL import Image
+import base64
 import firebase_admin
 from dotenv import load_dotenv
 from firebase_admin import credentials, storage, firestore, auth as firebase_auth
 from google.api_core.exceptions import NotFound
-from openai import OpenAI
+import openai
 import requests
 import cv2
 import numpy as np
@@ -31,8 +35,10 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 api_key = os.getenv("OPENWEATHER_API_KEY")
 DEFAULT_CITY = "London"
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 BUCKET_NAME = os.getenv("FIREBASE_STORAGE_BUCKET", "outfitgenerator-d60a5.firebasestorage.app")
-SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "/etc/secrets/outfitstyle.json")
+SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "outfitstyle.json")
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4")
 IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3")
 ALLOWED_ORIGINS = os.getenv(
@@ -60,8 +66,8 @@ CORS(
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "DELETE", "OPTIONS"],
 )
-rep_client = replicate.Client(api_token=os.getenv("REPLICATE_API_KEY"))
-
+#rep_client = replicate.Client(api_token=os.getenv("REPLICATE_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def get_db():
     return firestore.client()
@@ -69,7 +75,7 @@ def get_db():
 
 @lru_cache(maxsize=1)
 def get_openai():
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 @outfitback.errorhandler(Exception)
@@ -91,6 +97,8 @@ def require_auth(view):
         try:
             g.uid = firebase_auth.verify_id_token(header[len("Bearer "):])["uid"]
         except Exception:
+            log.exception("verify_id_token failed")
+            print("AUTH ERROR:", type(e).__name__, e)
             return jsonify({"error": "Invalid or expired auth token"}), 401
         return view(*args, **kwargs)
     return wrapper
@@ -197,13 +205,15 @@ def upload_public(data, path, content_type):
 
 
 def generate_image(prompt_text, uid):
-    """Generates an image and copies it to Firebase Storage, since OpenAI's URLs expire after an hour."""
-    options = {"response_format": "b64_json"} if IMAGE_MODEL.startswith("dall-e") else {}
-    response = get_openai().client.images.generate(
-        model=IMAGE_MODEL, prompt=prompt_text, n=1, size="1024x1024", **options
+    interaction = client.interactions.create(
+        model="gemini-nano-banana-2.1",
+        input=f"Generate a fashion illustration based on the following outfit description: {prompt_text}" ,
     )
-    image_bytes = base64.b64decode(response.data[0].b64_json)
-    return upload_public(image_bytes, f"generated/{uid}/{uuid.uuid4().hex}.png", "image/png")
+    return upload_public(
+        interaction.output_image.data,
+        f"generated/{uid}/{uuid.uuid4().hex}.png",
+        "image/png",
+    )
 
 
 @outfitback.route('/generate_outfit_from_closet', methods=['POST'])
@@ -269,7 +279,7 @@ def generate_outfit_from_closet():
         "Suggest an outfit:"
     )
     try:
-        response = get_openai().client.chat.completions.create(
+        response = get_openai().chat.completions.create(
             model=CHAT_MODEL,
             messages=[
                 {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
@@ -307,7 +317,13 @@ def generate_outfit_from_closet():
         "city": city,
     })
 
-
+def normalise_image(raw: bytes, max_side=1024) -> bytes:
+    img = Image.open(BytesIO(raw))
+    img = img.convert("RGB")           # drops alpha/odd modes
+    img.thumbnail((max_side, max_side))
+    out = BytesIO()
+    img.save(out, format="JPEG", quality=90)
+    return out.getvalue()
 def resize_image(filepath, max_size=512):
     img = cv2.imread(filepath)
     if img is None:
@@ -398,16 +414,27 @@ def cartoonize():
         except ValueError:
             return jsonify({"error": "Unsupported image format. Try a JPG or PNG."}), 400
 
-        with open(filepath, "rb") as image:
-            output = rep_client.run(
-                CARTOONIFY_MODEL,
-                input={
-                    "image": image,
-                    "prompt": "A cartoon-style version of the uploaded clothing item without changing the text on the clothing item",
-                    "aspect_ratio": "16:9",
+        with open(filepath, "rb") as f:
+            image_bytes = f.read()
+
+        interaction = client.interactions.create(
+            model="gemini-nano-banana-2.1",
+            input=[
+                {
+                "type": "text",
+                "text": "Cartoonify this image, keeping the clothing item clear and recognizable, with a fun and stylish cartoon aesthetic."
                 },
-            )
-        cartoon_source = str(output[0] if isinstance(output, (list, tuple)) else output)
+                {
+                    "type": "image",
+                    "data": base64.b64encode(image_bytes).decode('utf-8'),
+                    "mime_type": "image/png"
+                }
+            ],
+        )
+
+        with open("generated_image.png", "wb") as f:
+            f.write(base64.b64decode(interaction.output_image.data))
+        cartoon_source = str(interaction.output_image.data)
         r = requests.get(cartoon_source, timeout=60)
         if r.status_code != 200:
             print(f"Error downloading cartoon image: Status {r.status_code}")
@@ -505,4 +532,4 @@ def delete_closet_item(item_id):
 
 
 if __name__ == '__main__':
-    outfitback.run(debug=True)
+    outfitback.run(debug=True,port=5000)
