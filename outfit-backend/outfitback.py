@@ -207,14 +207,16 @@ def upload_public(data, path, content_type):
 def generate_image(prompt_text, uid):
     interaction = client.interactions.create(
         model="gemini-nano-banana-2.1",
-        input=f"Generate a fashion illustration based on the following outfit description: {prompt_text}" ,
+        input=f"Generate a fashion illustration based on the following outfit description: {prompt_text}"
+                "Use a clean, modern style with a plain background. Ensure the clothing items are clearly visible and accurately represented. Provide a high-quality image suitable for fashion presentation."
+                "dont include an human model, just the outfit on a mannequin or flat lay. Use realistic lighting and proportions.",
     )
-    return upload_public(
-        interaction.output_image.data,
-        f"generated/{uid}/{uuid.uuid4().hex}.png",
-        "image/png",
-    )
-
+    data = interaction.output_image.data
+    if isinstance(data, str):
+        data = base64.b64decode(data)
+    with open("generated_image.png", "wb") as f:
+        f.write(data)
+    return upload_public(data, f"generated/{uid}/{uuid.uuid4().hex}.png", "image/png")
 
 @outfitback.route('/generate_outfit_from_closet', methods=['POST'])
 @require_auth
@@ -431,14 +433,23 @@ def cartoonize():
                 }
             ],
         )
-
+        data = interaction.output_image.data
+        if isinstance(data, str):
+                data = base64.b64decode(data)
         with open("generated_image.png", "wb") as f:
-            f.write(base64.b64decode(interaction.output_image.data))
-        cartoon_source = str(interaction.output_image.data)
-        r = requests.get(cartoon_source, timeout=60)
-        if r.status_code != 200:
-            print(f"Error downloading cartoon image: Status {r.status_code}")
-            return jsonify({"error": "Stylizing the image failed. Please try again."}), 502
+            f.write(data)
+        cartoon_source = data
+        if isinstance(cartoon_source, (bytes, bytearray)):
+            cartoon_bytes = bytes(cartoon_source)
+        elif isinstance(cartoon_source, str) and cartoon_source.startswith("http"):
+            r = requests.get(cartoon_source, timeout=60)
+            r.raise_for_status()
+            if r.status_code != 200:
+                        print(f"Error downloading cartoon image: Status {r.status_code}")
+                        return jsonify({"error": "Stylizing the image failed. Please try again."}), 502
+            cartoon_bytes = r.content
+        else:
+            raise ValueError(f"Unexpected cartoon output: {type(cartoon_source)}")
 
         uid = g.uid
         file_id = uuid.uuid4().hex
@@ -446,7 +457,7 @@ def cartoonize():
         original_path = f"users/{uid}/{category}/{file_id}_{filename}"
         storage.bucket().blob(original_path).upload_from_string(original_bytes, content_type=file.mimetype)
         cartoon_path = f"cartoonized/{file_id}_{filename}"
-        cartoon_url = upload_public(r.content, cartoon_path, r.headers.get("Content-Type", "image/jpeg"))
+        cartoon_url = upload_public(cartoon_bytes, cartoon_path, "image/png")
 
         dominant_colors = extract_dominant_colors(filepath)
         city = request.form.get("city") or DEFAULT_CITY
