@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 import { useAuth } from './AuthContext'
+import { SIGNUPS_OPEN } from '../utils/firebase'
 import { api } from '../utils/api'
 import { UploadIcon } from '../components/customIcons'
 
@@ -10,9 +11,23 @@ const BETA_KEY = 'betaNoticeShown';
 
 // Values must match what the backend expects.
 const CATEGORIES = [
-  { group: 'Tops', options: [['top', 'Top'], ['hoodies', 'Hoodie'], ['coat', 'Coat']] },
-  { group: 'Bottoms', options: [['trouser', 'Trousers'], ['short', 'Shorts']] },
-  { group: 'Accessories', options: [['cap', 'Cap']] },
+  ['top', 'Top'], ['hoodies', 'Hoodie'], ['coat', 'Coat'],
+  ['trouser', 'Trousers'], ['short', 'Shorts'], ['cap', 'Cap'],
+];
+
+// Quick starts that fill the prompt box.
+const OCCASIONS = [
+  ['Work', 'A full day at the office, smart but comfortable'],
+  ['Date night', 'Dinner at a nice restaurant this evening'],
+  ['Weekend', 'Relaxed weekend errands and coffee with friends'],
+  ['Wedding guest', 'An afternoon wedding, dressy but not formal'],
+  ['Gym', 'A workout at the gym, then a quick lunch'],
+];
+
+const STEPS = [
+  ['Snap your clothes', 'Upload a photo of each piece. We clean it up and note its colours.'],
+  ['Say where you are going', 'A beach party, a job interview, a lazy Sunday. Plain words work.'],
+  ['Get dressed', 'We pick an outfit from your closet that suits the plan and the weather.'],
 ];
 
 const readSession = (key) => {
@@ -25,13 +40,20 @@ const writeSession = (key, value) => {
 function Home() {
   const { user, loading: authLoading } = useAuth();
   const [coords, setCoords] = useState(null);
+  const [geoState, setGeoState] = useState('pending'); // pending | on | off
   const [showBeta, setShowBeta] = useState(() => !readSession(BETA_KEY));
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) return setGeoState('off');
     navigator.geolocation.getCurrentPosition(
-      (position) => setCoords({ lat: position.coords.latitude, lon: position.coords.longitude }),
-      (err) => console.warn('Geolocation unavailable, using London weather:', err.message),
+      (position) => {
+        setCoords({ lat: position.coords.latitude, lon: position.coords.longitude });
+        setGeoState('on');
+      },
+      (err) => {
+        console.warn('Geolocation unavailable, using London weather:', err.message);
+        setGeoState('off');
+      },
     );
   }, []);
 
@@ -40,23 +62,18 @@ function Home() {
     setShowBeta(false);
   };
 
+  const firstName = user?.displayName?.split(' ')[0];
+
   return (
     <div className="flex flex-col gap-8">
       {showBeta && (
-        <div role="status" className="flex items-start justify-between gap-4 rounded-xl border bg-surface p-4">
-          <p className="max-w-prose text-muted">
-            OutfitGen is in beta. Some features may be incomplete while we keep improving it.
+        <div role="status" className="flex items-center justify-between gap-4 rounded-2xl bg-subtle px-4 py-3">
+          <p className="text-muted">
+            <span className="font-medium text-ink">Beta.</span> Some features may be incomplete while we keep improving.
           </p>
           <button type="button" onClick={dismissBeta} className="btn btn-ghost -my-2">Dismiss</button>
         </div>
       )}
-
-      <div>
-        <h1 className="text-2xl font-semibold">What should you wear?</h1>
-        <p className="mt-2 max-w-prose text-muted">
-          Describe where you're going and OutfitGen suggests an outfit from your closet, matched to today's weather.
-        </p>
-      </div>
 
       {authLoading ? (
         <div className="grid gap-6 lg:grid-cols-5">
@@ -64,28 +81,72 @@ function Home() {
           <div className="skeleton h-[320px] lg:col-span-2" />
         </div>
       ) : user ? (
-        <div className="grid items-start gap-6 lg:grid-cols-5">
-          <OutfitGenerator coords={coords} />
-          <AddToCloset coords={coords} />
-        </div>
+        <>
+          <div>
+            <h1 className="text-2xl font-semibold">{firstName ? `Hi ${firstName}, what's the plan?` : "What's the plan?"}</h1>
+            <p className="mt-2 max-w-prose text-muted">
+              Tell us where you're going and we'll put together an outfit from your closet, matched to today's weather.
+            </p>
+          </div>
+          <div className="grid items-start gap-6 lg:grid-cols-5">
+            <OutfitGenerator coords={coords} geoState={geoState} />
+            <AddToCloset coords={coords} />
+          </div>
+        </>
       ) : (
-        <section className="card flex flex-col items-start gap-4">
-          <h2 className="text-lg font-semibold">Log in to get started</h2>
-          <p className="max-w-prose text-muted">
-            Outfit ideas are built from the clothes you've added to your closet, so you need an account to use them.
-          </p>
-          <Link to="/login" className="btn btn-primary">Log in</Link>
-        </section>
+        <Welcome />
       )}
     </div>
   );
 }
 
-function OutfitGenerator({ coords }) {
+function Welcome() {
+  return (
+    <>
+      <section className="flex flex-col items-start gap-6 py-8 md:py-12">
+        <p className="rounded-full bg-subtle px-3 py-1 font-medium text-accent">Your closet, styled</p>
+        <h1 className="max-w-prose text-2xl font-semibold">
+          Never stare at a full wardrobe with nothing to wear again.
+        </h1>
+        <p className="max-w-prose text-lg text-muted">
+          OutfitGen suggests outfits from clothes you already own, based on where you're going and today's weather.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/login" className="btn btn-primary">Log in to start</Link>
+          {SIGNUPS_OPEN && <Link to="/signup" className="btn btn-secondary">Create an account</Link>}
+        </div>
+      </section>
+
+      <section aria-labelledby="how-it-works">
+        <h2 id="how-it-works" className="text-lg font-semibold">How it works</h2>
+        <ol className="mt-4 grid gap-4 md:grid-cols-3">
+          {STEPS.map(([title, body], i) => (
+            <li key={title} className="card flex flex-col gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent font-semibold text-on-accent">
+                {i + 1}
+              </span>
+              <h3 className="font-semibold">{title}</h3>
+              <p className="text-muted">{body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </>
+  );
+}
+
+function OutfitGenerator({ coords, geoState }) {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const promptRef = useRef(null);
+
+  const pickOccasion = (text) => {
+    setPrompt(text);
+    setError('');
+    promptRef.current?.focus();
+  };
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -111,48 +172,72 @@ function OutfitGenerator({ coords }) {
     }
   };
 
+  const weatherNote = {
+    pending: 'Checking your location for the weather...',
+    on: 'Using the weather where you are.',
+    off: 'Location is off, so we use London weather.',
+  }[geoState];
+
   return (
     <section className="card lg:col-span-3">
       <form onSubmit={handleGenerate} noValidate>
         <label htmlFor="prompt" className="label">Where are you going?</label>
+        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Quick occasions">
+          {OCCASIONS.map(([label, text]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => pickOccasion(text)}
+              aria-pressed={prompt === text}
+              disabled={loading}
+              className="chip"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <textarea
           id="prompt"
-          rows={4}
+          ref={promptRef}
+          rows={3}
           className="input resize-y"
-          placeholder="A beach party on Saturday afternoon"
+          placeholder="Or describe it, e.g. a beach party on Saturday afternoon"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           aria-invalid={!!error}
-          aria-describedby={error ? 'prompt-error' : undefined}
+          aria-describedby={error ? 'prompt-error' : 'weather-note'}
         />
         {error && <p id="prompt-error" role="alert" className="mt-2 text-danger">{error}</p>}
-        <button type="submit" disabled={loading} className="btn btn-primary mt-4 w-full sm:w-auto">
-          {loading && <span className="spinner" aria-hidden="true" />}
-          {loading ? 'Generating...' : 'Get outfit idea'}
-        </button>
-        {loading && <p className="mt-2 text-muted">Picking an outfit and drawing it can take up to a minute.</p>}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p id="weather-note" className="text-muted">{weatherNote}</p>
+          <button type="submit" disabled={loading} className="btn btn-primary w-full sm:w-auto">
+            {loading && <span className="spinner" aria-hidden="true" />}
+            {loading ? 'Styling...' : 'Style me'}
+          </button>
+        </div>
       </form>
 
-      <div className="mt-6" aria-live="polite" aria-busy={loading}>
+      <div className="mt-6 border-t pt-6" aria-live="polite" aria-busy={loading}>
         {loading ? (
           <div className="flex flex-col gap-3">
+            <p className="text-muted">Picking pieces and drawing your look. This can take up to a minute.</p>
+            <div className="skeleton aspect-square w-full" />
             <div className="skeleton h-4 w-3/4" />
-            <div className="skeleton h-4 w-full" />
             <div className="skeleton h-4 w-2/3" />
-            <div className="skeleton mt-3 aspect-square w-full" />
           </div>
         ) : result ? (
-          <div className="flex flex-col gap-4 border-t pt-6">
+          <div className="flex flex-col gap-4">
             <h2 className="text-lg font-semibold">Your outfit</h2>
-            <p className="max-w-prose whitespace-pre-line">{result.idea}</p>
             {result.imageUrl && (
-              <img src={result.imageUrl} alt="Illustration of the suggested outfit" className="w-full rounded-lg border" />
+              <img src={result.imageUrl} alt="Illustration of the suggested outfit" className="w-full rounded-xl bg-subtle" />
             )}
+            <p className="max-w-prose whitespace-pre-line">{result.idea}</p>
           </div>
         ) : (
-          <p className="rounded-lg border border-dashed p-6 text-center text-muted">
-            Your outfit idea will show up here.
-          </p>
+          <div className="flex flex-col items-center gap-2 rounded-xl bg-subtle px-6 py-12 text-center">
+            <p className="font-medium">Your look will appear here</p>
+            <p className="text-muted">Pick an occasion above or describe your plans.</p>
+          </div>
         )}
       </div>
     </section>
@@ -165,6 +250,7 @@ function AddToCloset({ coords }) {
   const [category, setCategory] = useState('');
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState(null); // { type: 'error' | 'success', message }
+  const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -177,16 +263,23 @@ function AddToCloset({ coords }) {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files[0];
+  const pickFile = (selected) => {
     if (!selected) return;
+    if (!selected.type.startsWith('image/')) {
+      return setStatus({ type: 'error', message: 'That file is not an image. Choose a JPG or PNG.' });
+    }
     if (selected.size > MAX_UPLOAD_MB * 1024 * 1024) {
-      setStatus({ type: 'error', message: `Choose a photo under ${MAX_UPLOAD_MB} MB.` });
-      e.target.value = '';
-      return;
+      if (inputRef.current) inputRef.current.value = '';
+      return setStatus({ type: 'error', message: `Choose a photo under ${MAX_UPLOAD_MB} MB.` });
     }
     setFile(selected);
     setStatus(null);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    if (!uploading) pickFile(e.dataTransfer.files[0]);
   };
 
   const handleUpload = async (e) => {
@@ -224,55 +317,61 @@ function AddToCloset({ coords }) {
   return (
     <section className="card lg:col-span-2">
       <h2 className="text-lg font-semibold">Add to your closet</h2>
-      <p className="mt-2 text-muted">Upload a photo of one clothing item.</p>
+      <p className="mt-2 text-muted">One clothing item per photo works best.</p>
 
-      <form onSubmit={handleUpload} noValidate className="mt-6 flex flex-col gap-4">
-        <div>
-          <span className="label">Photo</span>
-          <label
-            htmlFor="upload-input"
-            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center text-muted transition-colors focus-within:border-accent hover:border-muted hover:bg-subtle"
-          >
-            {previewUrl ? (
+      <form onSubmit={handleUpload} noValidate className="mt-6 flex flex-col gap-6">
+        <label
+          htmlFor="upload-input"
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center text-muted transition-colors focus-within:border-accent hover:border-muted hover:bg-subtle ${dragging ? 'border-accent bg-subtle' : ''}`}
+        >
+          {previewUrl ? (
+            <>
               <img src={previewUrl} alt="Selected item" className="max-h-[240px] rounded-lg object-contain" />
-            ) : (
-              <>
+              <span className="max-w-full truncate">{file.name}</span>
+              <span className="font-medium text-accent">Change photo</span>
+            </>
+          ) : (
+            <>
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-subtle text-ink">
                 <UploadIcon />
-                <span className="font-medium text-ink">Choose a photo</span>
-                <span>JPG or PNG, up to {MAX_UPLOAD_MB} MB</span>
-              </>
-            )}
-            <input
-              ref={inputRef}
-              id="upload-input"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              onChange={handleFileChange}
-              disabled={uploading}
-            />
-          </label>
-          {file && <p className="mt-2 truncate text-muted">{file.name}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="category" className="label">Category</label>
-          <select
-            id="category"
-            className="input"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+              </span>
+              <span className="font-medium text-ink">Drop a photo or browse</span>
+              <span>JPG or PNG, up to {MAX_UPLOAD_MB} MB</span>
+            </>
+          )}
+          <input
+            ref={inputRef}
+            id="upload-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            onChange={(e) => pickFile(e.target.files[0])}
             disabled={uploading}
-          >
-            <option value="" disabled>Select a category</option>
-            {CATEGORIES.map(({ group, options }) => (
-              <optgroup key={group} label={group}>
-                {options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </optgroup>
+          />
+        </label>
+
+        <fieldset disabled={uploading}>
+          <legend className="label">What is it?</legend>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map(([value, label]) => (
+              <label key={value} className="chip">
+                <input
+                  type="radio"
+                  name="category"
+                  value={value}
+                  checked={category === value}
+                  onChange={() => setCategory(value)}
+                  className="sr-only"
+                />
+                {label}
+              </label>
             ))}
-          </select>
-        </div>
+          </div>
+        </fieldset>
 
         {status && (
           <p role={status.type === 'error' ? 'alert' : 'status'} className={status.type === 'error' ? 'text-danger' : 'text-success'}>
@@ -281,11 +380,13 @@ function AddToCloset({ coords }) {
           </p>
         )}
 
-        <button type="submit" disabled={uploading} className="btn btn-secondary">
-          {uploading && <span className="spinner" aria-hidden="true" />}
-          {uploading ? 'Adding item...' : 'Add to closet'}
-        </button>
-        {uploading && <p className="text-muted">Stylizing your photo can take up to a minute.</p>}
+        <div className="flex flex-col gap-2">
+          <button type="submit" disabled={uploading} className="btn btn-secondary w-full">
+            {uploading && <span className="spinner" aria-hidden="true" />}
+            {uploading ? 'Adding item...' : 'Add to closet'}
+          </button>
+          {uploading && <p className="text-muted">Stylizing your photo can take up to a minute.</p>}
+        </div>
       </form>
     </section>
   );

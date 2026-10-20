@@ -1,8 +1,7 @@
 import { auth } from './firebase';
-const getBaseURL = () => {
-  const envBaseUrl = "http://127.0.0.1:5000";//import.meta.env.VITE_BACKEND_URL;
-  return envBaseUrl || "http://127.0.0.1:5000";
-};
+// `npm run dev` talks to the local Flask server; builds use VITE_BACKEND_URL.
+const getBaseURL = () =>
+  import.meta.env.DEV ? "http://127.0.0.1:5000" : import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
 
 const API = getBaseURL();
 

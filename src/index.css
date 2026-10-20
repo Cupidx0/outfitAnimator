@@ -5,31 +5,31 @@
 /* One neutral base, one accent, plus red and green for status.
    Every text colour below meets 4.5:1 against canvas and surface. */
 :root {
-  --canvas: #f6f7f8;
+  --canvas: #faf7f2;
   --surface: #ffffff;
-  --subtle: #eceef1;
-  --line: #d6dae0;
-  --ink: #1d2127;
-  --muted: #565d68;
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
+  --subtle: #f2ede6;
+  --line: #e0d9cf;
+  --ink: #211c18;
+  --muted: #5e5650;
+  --accent: #7b2d5b;
+  --accent-hover: #63234a;
   --on-accent: #ffffff;
-  --danger: #c22e29;
+  --danger: #b42318;
   --success: #1d7536;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --canvas: #131417;
-    --surface: #1b1c20;
-    --subtle: #26282d;
-    --line: #33363c;
-    --ink: #e7e8ea;
-    --muted: #a2a7af;
-    --accent: #8b93f8;
-    --accent-hover: #a5abfa;
-    --on-accent: #131417;
+    --canvas: #151311;
+    --surface: #1e1b18;
+    --subtle: #2a2622;
+    --line: #3a342e;
+    --ink: #efe9e2;
+    --muted: #ada398;
+    --accent: #e7a3c9;
+    --accent-hover: #f0bdd9;
+    --on-accent: #151311;
     --danger: #f2817b;
     --success: #5fcf86;
     color-scheme: dark;
@@ -43,6 +43,10 @@
   body {
     margin: 0;
   }
+  h1,
+  h2 {
+    @apply font-display tracking-tight;
+  }
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -51,7 +55,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-4 py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
     @apply bg-accent text-on-accent enabled:hover:bg-accent-hover;
@@ -71,7 +75,19 @@
   }
 
   .card {
-    @apply rounded-xl border bg-surface p-6;
+    @apply rounded-2xl border bg-surface p-6;
+  }
+  /* Pill toggles. Use on a <button aria-pressed> or a <label> wrapping a radio. */
+  .chip {
+    @apply inline-flex cursor-pointer items-center rounded-full border bg-surface px-4 py-2 font-medium text-muted transition-colors hover:border-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .chip[aria-pressed="true"],
+  .chip:has(:checked) {
+    @apply border-accent bg-accent text-on-accent hover:text-on-accent;
+  }
+  .chip:has(:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .label {
     @apply mb-2 block font-medium;

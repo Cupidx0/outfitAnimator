@@ -9,6 +9,7 @@ function Fashion() {
   const [closet, setCloset] = useState([]);
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [deletingId, setDeletingId] = useState(null);
+  const [filter, setFilter] = useState('all');
 
   const loadCloset = useCallback(async () => {
     if (!user?.uid) return;
@@ -42,17 +43,22 @@ function Fashion() {
     }
   };
 
-  const groupCloset = closet.reduce((groups, item) => {
-    const category = item.category || "uncategorized";
-    (groups[category] ||= []).push(item);
-    return groups;
-  }, {});
+  const categoryOf = (item) => item.category || 'uncategorized';
+  const categories = [...new Set(closet.map(categoryOf))];
+  // Fall back to all if the filtered category was emptied by a removal.
+  const activeFilter = categories.includes(filter) ? filter : 'all';
+  const shown = activeFilter === 'all' ? closet : closet.filter((item) => categoryOf(item) === activeFilter);
 
   const heading = (
-    <div>
-      <h1 className="text-2xl font-semibold">Your closet</h1>
-      {status === 'ready' && closet.length > 0 && (
-        <p className="mt-2 text-muted">{closet.length} {closet.length === 1 ? 'item' : 'items'}</p>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Your closet</h1>
+        {status === 'ready' && closet.length > 0 && (
+          <p className="mt-2 text-muted">{closet.length} {closet.length === 1 ? 'item' : 'items'}</p>
+        )}
+      </div>
+      {user && status === 'ready' && closet.length > 0 && (
+        <Link to="/" className="btn btn-primary">Add item</Link>
       )}
     </div>
   );
@@ -92,32 +98,48 @@ function Fashion() {
           action={<Link to="/" className="btn btn-primary">Add your first item</Link>}
         />
       ) : (
-        Object.entries(groupCloset).map(([category, items]) => (
-          <section key={category} aria-labelledby={`cat-${category}`}>
-            <h2 id={`cat-${category}`} className="text-lg font-semibold capitalize">{category}</h2>
-            <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-              {items.map((item) => (
-                <li key={item.id} className="flex flex-col overflow-hidden rounded-xl border bg-surface">
-                  <img
-                    src={item.cartoonURL}
-                    alt={`${category} item`}
-                    loading="lazy"
-                    className="aspect-square w-full bg-subtle object-cover"
-                  />
+        <>
+          {categories.length > 1 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+              {['all', ...categories].map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setFilter(cat)}
+                  aria-pressed={activeFilter === cat}
+                  className="chip capitalize"
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            {shown.map((item) => (
+              <li key={item.id} className="flex flex-col overflow-hidden rounded-2xl border bg-surface">
+                <img
+                  src={item.cartoonURL}
+                  alt={`${categoryOf(item)} item`}
+                  loading="lazy"
+                  className="aspect-square w-full bg-subtle object-cover"
+                />
+                <div className="flex items-center justify-between gap-2 py-1 pl-3 pr-1">
+                  <span className="truncate capitalize text-muted">{categoryOf(item)}</span>
                   <button
                     type="button"
                     onClick={() => deleteItem(item.id)}
                     disabled={deletingId === item.id}
-                    className="btn btn-ghost m-2 text-danger hover:text-danger"
+                    className="btn btn-ghost text-danger hover:text-danger"
+                    aria-label={`Remove ${categoryOf(item)} item`}
                   >
                     {deletingId === item.id && <span className="spinner" aria-hidden="true" />}
                     {deletingId === item.id ? 'Removing...' : 'Remove'}
                   </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
@@ -125,7 +147,7 @@ function Fashion() {
 
 function EmptyState({ title, body, action, tone }) {
   return (
-    <div className="card flex flex-col items-center gap-4 py-12 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed bg-surface px-6 py-12 text-center">
       <h2 className={`text-lg font-semibold ${tone === 'danger' ? 'text-danger' : ''}`}>{title}</h2>
       <p className="max-w-prose text-muted">{body}</p>
       {action}

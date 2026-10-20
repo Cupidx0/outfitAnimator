@@ -22,6 +22,8 @@ export default {
     },
     fontFamily: {
       sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+      // Headings only.
+      display: ["Fraunces", "Georgia", "serif"],
     },
     extend: {
       // Colour values live in src/index.css so light and dark mode share one set of names.

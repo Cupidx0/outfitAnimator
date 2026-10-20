@@ -42,7 +42,8 @@ SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "outfitstyle.j
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4")
 IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3")
 ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS", "https://outfit-animator.vercel.app,http://localhost:5174"
+    "ALLOWED_ORIGINS",
+    "https://outfit-animator.vercel.app,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173",
 ).split(",")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 # Must match the category values offered by the frontend.
@@ -424,7 +425,7 @@ def cartoonize():
             input=[
                 {
                 "type": "text",
-                "text": "Cartoonify this image, keeping the clothing item clear and recognizable, with a fun and stylish cartoon aesthetic."
+                "text": "make a perfect photo-realistic illustration of this image of a clothing item. Keep the colors and details, but make it look like a clean, modern neat almost real illustration. Use a plain background and ensure the clothing item is clearly visible."
                 },
                 {
                     "type": "image",
