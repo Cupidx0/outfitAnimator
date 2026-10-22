@@ -319,7 +319,8 @@ def generate_outfit_from_closet():
         "weather_tag": weather_tag,
         "city": city,
     })
-
+#def call_idea_frm_db():
+    #
 def normalise_image(raw: bytes, max_side=1024) -> bytes:
     img = Image.open(BytesIO(raw))
     img = img.convert("RGB")           # drops alpha/odd modes
