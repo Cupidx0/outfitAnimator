@@ -163,7 +163,7 @@ function OutfitGenerator({ coords, geoState }) {
         method: 'POST',
         json: { lat: coords?.lat ?? null, lon: coords?.lon ?? null, prompt },
       });
-      setResult({ idea: data.outfit_idea, imageUrl: data.image_url });
+      setResult({ idea: data.outfit_idea, imageUrl: data.image_url, closetItems: data.closet_items || [] });
     } catch (err) {
       console.error(err);
       setError("We couldn't generate an outfit right now. Please try again.");
@@ -230,6 +230,15 @@ function OutfitGenerator({ coords, geoState }) {
             <h2 className="text-lg font-semibold">Your outfit</h2>
             {result.imageUrl && (
               <img src={result.imageUrl} alt="Illustration of the suggested outfit" className="w-full rounded-xl bg-subtle" />
+            )}
+            {!result.imageUrl && result.closetItems.length > 0 && (
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Pieces from your closet">
+                {result.closetItems.map((item) => (
+                  <li key={item.id}>
+                    <img src={item.cartoonURL} alt={`${item.category} from your closet`} className="aspect-square w-full rounded-xl bg-subtle object-cover" />
+                  </li>
+                ))}
+              </ul>
             )}
             <p className="max-w-prose whitespace-pre-line">{result.idea}</p>
           </div>

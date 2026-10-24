@@ -39,7 +39,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 BUCKET_NAME = os.getenv("FIREBASE_STORAGE_BUCKET", "outfitgenerator-d60a5.firebasestorage.app")
 SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "outfitstyle.json")
-CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4")
+CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
 IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3")
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
@@ -232,8 +232,9 @@ def generate_outfit_from_closet():
     temp = weather_data["temp"] if weather_data else None
     weather_tag = get_weather_tag(temp)
 
-    # Get user's closet items
+    # Get user's closet items; each is numbered so the model can say which ones it picked
     closet_items = []
+    closet_docs = []
     all_colors = []
     for doc in get_db().collection("closet").where("userId", "==", g.uid).stream():
         item = doc.to_dict()
@@ -245,8 +246,9 @@ def generate_outfit_from_closet():
             if name and percentage < 50:
                 filtered_colors.append(name)
                 all_colors.append((name, percentage))
+        closet_docs.append({"id": doc.id, "category": category, "cartoonURL": item.get("cartoonURL")})
         closet_items.append(
-            f"({category}) ({','.join(filtered_colors) if filtered_colors else 'mixed'}) ({item.get('weather_Tag', 'unknown')})"
+            f"[{len(closet_docs)}] ({category}) ({','.join(filtered_colors) if filtered_colors else 'mixed'}) ({item.get('weather_Tag', 'unknown')})"
         )
     closet_empty = len(closet_items) == 0
     closet_text = ", ".join(closet_items) if closet_items else "no clothing items available"
@@ -268,6 +270,7 @@ def generate_outfit_from_closet():
         "Use 3 to 5 items from the closet covering each category (e.g., top, bottom, shoes, accessory).\n"
         f"Closet items: {closet_text}.\n"
         "If the closet is empty, create a new outfit idea based on the weather.\n"
+        "If an item needs to be suggested that is not in the closet, mention it as a missing piece.\n"
         f"{weather_line}\n"
         f"Prominent closet colors: {colors_description}.\n"
         f"{'Exclude items like ' + excluded_items + '.' if excluded_items else ''}\n"
@@ -277,8 +280,10 @@ def generate_outfit_from_closet():
         "Example: a black top, blue jeans, and white sneakers.\n"
         "Start with a short sentence about the temperature.\n"
         "Make funny comment about the outfit where necessary.\n"
-        "Only use available closet items if any exist.\n"
-        "If the input is unrelated to fashion, reply: 'Sorry, I can only help with outfit suggestions.'\n"
+        "Once you have a suggestion, provide the final line in the specified format.\n"
+        "If the input is unrelated to fashion, reply: 'Sorry, I can only help with outfit suggestions.' and end with 'ITEMS: none | MISSING: none'.\n"
+        "After the suggestion, add one final line in exactly this format:\n"
+        "ITEMS: <comma separated closet numbers you used, or none> | MISSING: <pieces you suggested that are not in the closet, or none>\n"
         "Suggest an outfit:"
     )
     try:
@@ -288,13 +293,36 @@ def generate_outfit_from_closet():
                 {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=180,
+            max_tokens=220,
             temperature=0.6,
         )
         idea = response.choices[0].message.content.strip()
     except Exception:
         traceback.print_exc()
         return jsonify({"error": "Outfit generation failed"}), 502
+
+    idea, used_items, missing = parse_closet_tag(idea, closet_docs)
+    refused = idea.lower().startswith("sorry, i can only help")
+    if refused or (not used_items and not missing):
+        # Off-topic request, or no outfit was suggested, so there is nothing to draw.
+        return jsonify({
+            "outfit_idea": idea,
+            "image_url": None,
+            "closet_items": [],
+            "temp": temp,
+            "weather_tag": weather_tag,
+            "city": city,
+        })
+    if used_items and not missing:
+        # The whole outfit is already in the closet, so show those pieces instead of drawing a new image.
+        return jsonify({
+            "outfit_idea": idea,
+            "image_url": None,
+            "closet_items": used_items,
+            "temp": temp,
+            "weather_tag": weather_tag,
+            "city": city,
+        })
 
     if closet_empty:
         image_prompt = (
@@ -315,12 +343,36 @@ def generate_outfit_from_closet():
     return jsonify({
         "outfit_idea": idea,
         "image_url": image_url,
+        "closet_items": used_items,
         "temp": temp,
         "weather_tag": weather_tag,
         "city": city,
     })
-#def call_idea_frm_db():
-    #
+
+
+def parse_closet_tag(idea, closet_docs):
+    """Strip the trailing 'ITEMS: ... | MISSING: ...' line; return (idea, closet items used, missing pieces)."""
+    lines = idea.rstrip().splitlines()
+    if not lines or not lines[-1].strip().upper().startswith("ITEMS:"):
+        # No tag means we can't trust that the closet covers the outfit.
+        return idea, [], True
+    tag = lines[-1].strip()
+    idea = "\n".join(lines[:-1]).strip()
+
+    items_part, _, missing_part = tag[len("ITEMS:"):].partition("|")
+    missing_text = missing_part.split(":", 1)[-1].strip().lower()
+    missing = bool(missing_text) and missing_text not in ("none", "n/a", "nothing")
+
+    used, seen = [], set()
+    for token in items_part.replace(" ", "").split(","):
+        if token.isdigit() and 1 <= int(token) <= len(closet_docs) and token not in seen:
+            seen.add(token)
+            doc = closet_docs[int(token) - 1]
+            if doc["cartoonURL"]:
+                used.append(doc)
+    return idea, used, missing
+
+
 def normalise_image(raw: bytes, max_side=1024) -> bytes:
     img = Image.open(BytesIO(raw))
     img = img.convert("RGB")           # drops alpha/odd modes
@@ -496,6 +548,7 @@ def list_closet():
         items.append({
             "id": doc.id,
             "category": item.get("category"),
+            "dominantColors": item.get("dominantColors"),
             "cartoonURL": item.get("cartoonURL"),
             "timestamp": item.get("timestamp"),
         })
