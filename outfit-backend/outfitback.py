@@ -14,7 +14,6 @@ import tempfile
 import traceback
 import uuid
 import logging
-#import replicate
 from google import genai
 from PIL import Image
 import base64
@@ -40,7 +39,7 @@ log.setLevel(logging.INFO)
 BUCKET_NAME = os.getenv("FIREBASE_STORAGE_BUCKET", "outfitgenerator-d60a5.firebasestorage.app")
 SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "outfitstyle.json")
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
-IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3")
+IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-nano-banana-2.1")
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
     "https://outfit-animator.vercel.app,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173",
@@ -48,7 +47,9 @@ ALLOWED_ORIGINS = os.getenv(
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 # Must match the category values offered by the frontend.
 CATEGORIES = {"top", "hoodies", "coat", "trouser", "short", "cap"}
-CARTOONIFY_MODEL = "catacolabs/cartoonify:f109015d60170dfb20460f17da8cb863155823c85ece1115e1e9e4ec7ef51d3b"
+UPPER_CATEGORIES = {"top", "hoodies", "coat"}
+LOWER_CATEGORIES = {"trouser", "short"}
+MAX_REFERENCE_IMAGES = 4
 
 try:
     firebase_admin.initialize_app(
@@ -67,8 +68,7 @@ CORS(
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "DELETE", "OPTIONS"],
 )
-#rep_client = replicate.Client(api_token=os.getenv("REPLICATE_API_KEY"))
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
 
 def get_db():
     return firestore.client()
@@ -77,6 +77,19 @@ def get_db():
 @lru_cache(maxsize=1)
 def get_openai():
     return openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+@lru_cache(maxsize=1)
+def get_gemini():
+    # Created on first use so the app (and the tests) can start without a key.
+    return genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+def gemini_image(prompt_input):
+    """Runs the Gemini image model and returns the image as bytes."""
+    interaction = get_gemini().interactions.create(model=IMAGE_MODEL, input=prompt_input)
+    data = interaction.output_image.data
+    return base64.b64decode(data) if isinstance(data, str) else bytes(data)
 
 
 @outfitback.errorhandler(Exception)
@@ -99,7 +112,6 @@ def require_auth(view):
             g.uid = firebase_auth.verify_id_token(header[len("Bearer "):])["uid"]
         except Exception:
             log.exception("verify_id_token failed")
-            print("AUTH ERROR:", type(e).__name__, e)
             return jsonify({"error": "Invalid or expired auth token"}), 401
         return view(*args, **kwargs)
     return wrapper
@@ -130,6 +142,7 @@ def get_weather(city=DEFAULT_CITY, lat=None, lon=None):
         return None
     data = response.json()
     return {
+        "city": data.get("name"),
         "temp": data["main"]["temp"],
         "weather": data["weather"][0]["main"],
         "description": data["weather"][0]["description"],
@@ -205,19 +218,138 @@ def upload_public(data, path, content_type):
     return blob.public_url
 
 
-def generate_image(prompt_text, uid):
-    interaction = client.interactions.create(
-        model="gemini-nano-banana-2.1",
-        input=f"Generate a fashion illustration based on the following outfit description: {prompt_text}"
-                "Use a clean, modern style with a plain background. Ensure the clothing items are clearly visible and accurately represented. Provide a high-quality image suitable for fashion presentation."
-                "dont include an human model, just the outfit on a mannequin or flat lay. Use realistic lighting and proportions.",
+STYLIST_PROMPT = """You are a personal stylist. You build one outfit from the user's own closet for the occasion they describe and today's weather.
+
+How to build it:
+- A complete outfit has one bottom (trouser or short) and at least one upper layer (top, hoodies, coat). A cap is optional.
+- Weather comes first. Layer up when it is cold. Skip coats and hoodies when it is hot, and skip shorts when it is cold.
+- The occasion comes second. Match the formality and vibe the user asked for.
+- Coordinate colours: build on neutrals or one base colour and add at most one accent. Closet colours were read from photos, so they are approximate and can include the photo background. Use the colour that makes sense for the garment.
+- Only pick items that are in the closet list, by their id. Never invent closet items or change their colours.
+- If the closet cannot make a complete, weather-appropriate outfit, put the gap in "missing" with a specific suggestion, e.g. "slim dark-wash jeans". Do not list pieces the closet already covers.
+- The closet cannot store shoes or accessories, so recommend those in "extras", never in "missing".
+- If the closet is empty, design a full outfit and put every garment in "missing".
+- If the request has nothing to do with clothing or getting dressed, set "off_topic" to true and leave the lists empty.
+
+Reply with a JSON object only:
+{
+  "off_topic": false,
+  "title": "name for the look, at most 6 words",
+  "summary": "2 or 3 friendly sentences on why this works for the weather and the occasion. A light joke is welcome.",
+  "items": [{"id": 1, "why": "one short reason this piece earns its place"}],
+  "missing": [{"piece": "specific garment with colour and cut", "why": "the gap it fills"}],
+  "extras": ["shoes or accessories that finish the look"],
+  "image_prompt": "visual description of every garment in the outfit (closet pieces and missing ones) with colour, cut and fabric, for an illustrator. Clothes only: no people, no text."
+}"""
+
+OFF_TOPIC_REPLY = "Sorry, I can only help with outfit suggestions."
+
+
+def describe_closet_item(number, item):
+    colours = [
+        f"{c['name']} ({round(c.get('percentage', 0))}%)"
+        for c in item.get("dominantColors") or []
+        if c.get("name")
+    ]
+    return {
+        "id": number,
+        "category": item.get("category", "unknown"),
+        "colours": colours or ["unknown"],
+        "warmth": item.get("weather_Tag", "all-weather"),
+    }
+
+
+def build_stylist_request(prompt_text, closet, weather, city):
+    if weather:
+        weather_line = (
+            f"{weather['temp']:.0f}°C and {weather['description']} in {weather.get('city') or city} "
+            f"({get_weather_tag(weather['temp'])})."
+        )
+    else:
+        weather_line = "Unknown. Pick something that works across mild weather."
+    return (
+        f"Occasion: {prompt_text}\n"
+        f"Weather: {weather_line}\n"
+        f"Closet: {json.dumps(closet) if closet else 'empty'}"
     )
-    data = interaction.output_image.data
-    if isinstance(data, str):
-        data = base64.b64decode(data)
-    with open("generated_image.png", "wb") as f:
-        f.write(data)
+
+
+def parse_stylist_reply(raw, closet_docs):
+    """Validates the model's JSON so the rest of the route can trust it. Raises ValueError on junk."""
+    reply = json.loads(raw)
+    if not isinstance(reply, dict):
+        raise ValueError("Stylist reply is not an object")
+
+    used, seen = [], set()
+    for entry in reply.get("items") or []:
+        number = entry.get("id") if isinstance(entry, dict) else entry
+        # The model sometimes sends ids as strings.
+        if isinstance(number, str) and number.strip().isdigit():
+            number = int(number)
+        if isinstance(number, int) and 1 <= number <= len(closet_docs) and number not in seen:
+            seen.add(number)
+            doc = closet_docs[number - 1]
+            if doc["cartoonURL"]:
+                why = entry.get("why", "") if isinstance(entry, dict) else ""
+                used.append({**doc, "why": str(why).strip()})
+
+    missing = []
+    for entry in reply.get("missing") or []:
+        piece = entry.get("piece") if isinstance(entry, dict) else entry
+        if piece and str(piece).strip().lower() not in ("none", "n/a", "nothing"):
+            why = entry.get("why", "") if isinstance(entry, dict) else ""
+            missing.append({"piece": str(piece).strip(), "why": str(why).strip()})
+
+    return {
+        "off_topic": bool(reply.get("off_topic")),
+        "title": str(reply.get("title") or "").strip(),
+        "summary": str(reply.get("summary") or "").strip(),
+        "items": used,
+        "missing": missing,
+        "extras": [str(x).strip() for x in reply.get("extras") or [] if str(x).strip()],
+        "image_prompt": str(reply.get("image_prompt") or "").strip(),
+    }
+
+
+def covers_outfit(items):
+    categories = {item["category"] for item in items}
+    return bool(categories & UPPER_CATEGORIES) and bool(categories & LOWER_CATEGORIES)
+
+
+def fetch_reference_images(items):
+    """Downloads the stylized closet pieces so the illustration can match them."""
+    parts = []
+    for item in items[:MAX_REFERENCE_IMAGES]:
+        try:
+            r = requests.get(item["cartoonURL"], timeout=15)
+            r.raise_for_status()
+        except requests.RequestException:
+            log.warning("Could not fetch reference image %s", item["id"])
+            continue
+        parts.append({
+            "type": "image",
+            "data": base64.b64encode(r.content).decode("utf-8"),
+            "mime_type": r.headers.get("Content-Type", "image/png").split(";")[0],
+        })
+    return parts
+
+
+def generate_image(description, references, uid):
+    text = (
+        "Flat-lay fashion illustration of one complete outfit on a plain light background, "
+        "styled like a lookbook page. Show every garment fully with realistic fabric, lighting and proportions. "
+        "No people, no mannequin heads, no text or logos.\n"
+        f"Outfit: {description}"
+    )
+    if references:
+        text += (
+            "\nThe attached images are pieces from the user's own closet. "
+            "Draw those pieces exactly as they look, keeping their colours and details, "
+            "and add the other garments described above."
+        )
+    data = gemini_image([{"type": "text", "text": text}, *references])
     return upload_public(data, f"generated/{uid}/{uuid.uuid4().hex}.png", "image/png")
+
 
 @outfitback.route('/generate_outfit_from_closet', methods=['POST'])
 @require_auth
@@ -228,149 +360,58 @@ def generate_outfit_from_closet():
         return jsonify({"error": "Missing prompt"}), 400
     city = data.get("city") or DEFAULT_CITY
 
-    weather_data = get_weather(city, data.get("lat"), data.get("lon"))
-    temp = weather_data["temp"] if weather_data else None
-    weather_tag = get_weather_tag(temp)
+    weather = get_weather(city, data.get("lat"), data.get("lon"))
+    temp = weather["temp"] if weather else None
+    if weather and weather.get("city"):
+        city = weather["city"]
 
-    # Get user's closet items; each is numbered so the model can say which ones it picked
-    closet_items = []
-    closet_docs = []
-    all_colors = []
+    # Items are numbered so the model can point at them without seeing Firestore ids.
+    closet, closet_docs = [], []
     for doc in get_db().collection("closet").where("userId", "==", g.uid).stream():
         item = doc.to_dict()
-        category = item.get("category", "unknown")
-        filtered_colors = []
-        for color in item.get("dominantColors") or []:
-            name = color.get("name")
-            percentage = color.get("percentage", 0)
-            if name and percentage < 50:
-                filtered_colors.append(name)
-                all_colors.append((name, percentage))
-        closet_docs.append({"id": doc.id, "category": category, "cartoonURL": item.get("cartoonURL")})
-        closet_items.append(
-            f"[{len(closet_docs)}] ({category}) ({','.join(filtered_colors) if filtered_colors else 'mixed'}) ({item.get('weather_Tag', 'unknown')})"
-        )
-    closet_empty = len(closet_items) == 0
-    closet_text = ", ".join(closet_items) if closet_items else "no clothing items available"
+        closet_docs.append({"id": doc.id, "category": item.get("category"), "cartoonURL": item.get("cartoonURL")})
+        closet.append(describe_closet_item(len(closet_docs), item))
 
-    # Unique colour names, least dominant first
-    unique_color_names = list(dict.fromkeys(name for name, _ in sorted(all_colors, key=lambda x: x[1])))
-    colors_description = ", ".join(unique_color_names) if unique_color_names else "no specific colors"
-
-    excluded_items = ""
-    if temp is not None and temp >= 22:
-        excluded_items = "coats, hoodies"
-    elif temp is not None and temp <= 10:
-        excluded_items = "short, tank tops"
-    weather_line = f"Weather: {weather_tag}, temperature: {temp}°C." if temp is not None else "Weather: unknown."
-
-    prompt = (
-        f"Users special request: {prompt_text}.\n"
-        "You are a fashion assistant. Based on the user’s request, the closet items, and the current weather, suggest a complete outfit.\n"
-        "Use 3 to 5 items from the closet covering each category (e.g., top, bottom, shoes, accessory).\n"
-        f"Closet items: {closet_text}.\n"
-        "If the closet is empty, create a new outfit idea based on the weather.\n"
-        "If an item needs to be suggested that is not in the closet, mention it as a missing piece.\n"
-        f"{weather_line}\n"
-        f"Prominent closet colors: {colors_description}.\n"
-        f"{'Exclude items like ' + excluded_items + '.' if excluded_items else ''}\n"
-        "Use color coordination and include at least one accent color (low-percentage color).\n"
-        "Only use closet colors that match appropriate clothing category.\n"
-        "Do not assign colors from a category to another category while giving ideas.\n"
-        "Example: a black top, blue jeans, and white sneakers.\n"
-        "Start with a short sentence about the temperature.\n"
-        "Make funny comment about the outfit where necessary.\n"
-        "Once you have a suggestion, provide the final line in the specified format.\n"
-        "If the input is unrelated to fashion, reply: 'Sorry, I can only help with outfit suggestions.' and end with 'ITEMS: none | MISSING: none'.\n"
-        "After the suggestion, add one final line in exactly this format:\n"
-        "ITEMS: <comma separated closet numbers you used, or none> | MISSING: <pieces you suggested that are not in the closet, or none>\n"
-        "Suggest an outfit:"
-    )
     try:
         response = get_openai().chat.completions.create(
             model=CHAT_MODEL,
             messages=[
-                {"role": "system", "content": "You're a virtual stylist helping users pick outfits based on weather and closet items."},
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": STYLIST_PROMPT},
+                {"role": "user", "content": build_stylist_request(prompt_text, closet, weather, city)},
             ],
-            max_tokens=220,
-            temperature=0.6,
+            response_format={"type": "json_object"},
+            max_tokens=700,
+            temperature=0.7,
         )
-        idea = response.choices[0].message.content.strip()
+        outfit = parse_stylist_reply(response.choices[0].message.content, closet_docs)
     except Exception:
         traceback.print_exc()
         return jsonify({"error": "Outfit generation failed"}), 502
 
-    idea, used_items, missing = parse_closet_tag(idea, closet_docs)
-    refused = idea.lower().startswith("sorry, i can only help")
-    if refused or (not used_items and not missing):
-        # Off-topic request, or no outfit was suggested, so there is nothing to draw.
-        return jsonify({
-            "outfit_idea": idea,
-            "image_url": None,
-            "closet_items": [],
-            "temp": temp,
-            "weather_tag": weather_tag,
-            "city": city,
-        })
-    if used_items and not missing:
-        # The whole outfit is already in the closet, so show those pieces instead of drawing a new image.
-        return jsonify({
-            "outfit_idea": idea,
-            "image_url": None,
-            "closet_items": used_items,
-            "temp": temp,
-            "weather_tag": weather_tag,
-            "city": city,
-        })
-
-    if closet_empty:
-        image_prompt = (
-            f"Full-body fashion illustration of a modern outfit that includes: {idea}. "
-            f"Styled for {weather_tag} weather, realistic lighting, plain background, "
-            "professional editorial photo aesthetic, contemporary fashion photography. "
-            "Generate life like images for the output."
-        )
-    else:
-        image_prompt = f"Fashion illustration of {idea}, flat design, white background, detailed"
-    try:
-        image_url = generate_image(image_prompt, g.uid)
-    except Exception:
-        # The text idea is still useful without a picture.
-        traceback.print_exc()
-        image_url = None
-
-    return jsonify({
-        "outfit_idea": idea,
-        "image_url": image_url,
-        "closet_items": used_items,
+    result = {
+        "title": outfit["title"],
+        "outfit_idea": outfit["summary"],
+        "closet_items": outfit["items"],
+        "missing": outfit["missing"],
+        "extras": outfit["extras"],
+        "image_url": None,
         "temp": temp,
-        "weather_tag": weather_tag,
+        "weather_tag": get_weather_tag(temp),
         "city": city,
-    })
+    }
+    if outfit["off_topic"]:
+        return jsonify({**result, "title": "", "outfit_idea": OFF_TOPIC_REPLY,
+                        "closet_items": [], "missing": [], "extras": []})
 
-
-def parse_closet_tag(idea, closet_docs):
-    """Strip the trailing 'ITEMS: ... | MISSING: ...' line; return (idea, closet items used, missing pieces)."""
-    lines = idea.rstrip().splitlines()
-    if not lines or not lines[-1].strip().upper().startswith("ITEMS:"):
-        # No tag means we can't trust that the closet covers the outfit.
-        return idea, [], True
-    tag = lines[-1].strip()
-    idea = "\n".join(lines[:-1]).strip()
-
-    items_part, _, missing_part = tag[len("ITEMS:"):].partition("|")
-    missing_text = missing_part.split(":", 1)[-1].strip().lower()
-    missing = bool(missing_text) and missing_text not in ("none", "n/a", "nothing")
-
-    used, seen = [], set()
-    for token in items_part.replace(" ", "").split(","):
-        if token.isdigit() and 1 <= int(token) <= len(closet_docs) and token not in seen:
-            seen.add(token)
-            doc = closet_docs[int(token) - 1]
-            if doc["cartoonURL"]:
-                used.append(doc)
-    return idea, used, missing
+    # Only draw a picture when the closet can't show the whole look by itself.
+    if outfit["missing"] or not covers_outfit(outfit["items"]):
+        description = outfit["image_prompt"] or outfit["summary"]
+        try:
+            result["image_url"] = generate_image(description, fetch_reference_images(outfit["items"]), g.uid)
+        except Exception:
+            # The text idea is still useful without a picture.
+            traceback.print_exc()
+    return jsonify(result)
 
 
 def normalise_image(raw: bytes, max_side=1024) -> bytes:
@@ -473,49 +514,32 @@ def cartoonize():
         with open(filepath, "rb") as f:
             image_bytes = f.read()
 
-        interaction = client.interactions.create(
-            model="gemini-nano-banana-2.1",
-            input=[
-                {
+        cartoon_bytes = gemini_image([
+            {
                 "type": "text",
-                "text": "make a perfect photo-realistic illustration of this image of a clothing item. Keep the colors and details, but make it look like a clean, modern neat almost real illustration. Use a plain background and ensure the clothing item is clearly visible."
-                },
-                {
-                    "type": "image",
-                    "data": base64.b64encode(image_bytes).decode('utf-8'),
-                    "mime_type": "image/png"
-                }
-            ],
-        )
-        data = interaction.output_image.data
-        if isinstance(data, str):
-                data = base64.b64decode(data)
-        with open("generated_image.png", "wb") as f:
-            f.write(data)
-        cartoon_source = data
-        if isinstance(cartoon_source, (bytes, bytearray)):
-            cartoon_bytes = bytes(cartoon_source)
-        elif isinstance(cartoon_source, str) and cartoon_source.startswith("http"):
-            r = requests.get(cartoon_source, timeout=60)
-            r.raise_for_status()
-            if r.status_code != 200:
-                        print(f"Error downloading cartoon image: Status {r.status_code}")
-                        return jsonify({"error": "Stylizing the image failed. Please try again."}), 502
-            cartoon_bytes = r.content
-        else:
-            raise ValueError(f"Unexpected cartoon output: {type(cartoon_source)}")
+                "text": (
+                    "Recreate this clothing item as a clean, realistic product illustration on a plain white background. "
+                    "Keep its exact colours, pattern, logos and cut. Show only the garment, centred and fully visible: "
+                    "no person, hanger or other objects."
+                ),
+            },
+            {
+                "type": "image",
+                "data": base64.b64encode(image_bytes).decode("utf-8"),
+                # resize_image keeps the upload's format.
+                "mime_type": file.mimetype,
+            },
+        ])
 
         uid = g.uid
         file_id = uuid.uuid4().hex
         # Originals stay private; only the stylized version is public.
         original_path = f"users/{uid}/{category}/{file_id}_{filename}"
         storage.bucket().blob(original_path).upload_from_string(original_bytes, content_type=file.mimetype)
-        cartoon_path = f"cartoonized/{file_id}_{filename}"
+        cartoon_path = f"cartoonized/{file_id}_{os.path.splitext(filename)[0]}.png"
         cartoon_url = upload_public(cartoon_bytes, cartoon_path, "image/png")
 
         dominant_colors = extract_dominant_colors(filepath)
-        city = request.form.get("city") or DEFAULT_CITY
-        weather_data = get_weather(city, request.form.get("lat"), request.form.get("lon"))
         weather_tag = infer_weather_tag_from_category(category)
         doc_ref = get_db().collection("closet").document()
         doc_ref.set({
@@ -532,8 +556,6 @@ def cartoonize():
             "id": doc_ref.id,
             "cartoonUrl": cartoon_url,
             "weather_Tag": weather_tag,
-            "temp": weather_data["temp"] if weather_data else None,
-            "city": city,
         })
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
